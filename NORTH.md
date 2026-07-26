@@ -24,8 +24,9 @@ Nothing is deployed. The repo is the artefact. `index.html` is a live demo if it
 is ever served, but it is not required to be.
 
 ## In flight
-- Not yet pushed to GitHub. It is built, committed and ready; making it public
-  is KP's call, per studio law.
+- **Published 2026-07-26**, MIT, at `khushinpatel1/since-clock`. KP's call, made
+  the same day the studio's classification policy changed to "public by default
+  unless we plan to sell it." This repo is not for sale and never was.
 - `site/clock.js` in the `khushin` repo is the same file under a different
   name. It is a copy, deliberately — vendoring two readable files beats a
   dependency — but the two must not drift. Change one, change the other.
