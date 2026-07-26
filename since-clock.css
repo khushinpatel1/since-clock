@@ -17,3 +17,82 @@
   border-bottom: 1px solid currentColor;
   padding-bottom: 0.1em;
 }
+
+/* ---------- flow mode (data-since-flow) ----------
+   A continuous odometer for the seconds column. `.since-flow` is decorative
+   and aria-hidden in the markup the script builds; `.since-flow__sr` is the
+   plain-text sibling that carries the real accessible name, so nothing here
+   needs re-describing for assistive tech — that is handled at the DOM level,
+   not in CSS. What CSS owns is making the wheel look and move like one:
+   letterpress digits behind a hairline mask, in constant motion, never at
+   rest on a step.
+
+   Everything that changes every frame — the strip's position — is a
+   `transform`, and nothing else here is touched per frame. That keeps this
+   on the compositor: no layout, no paint, just a moved layer. */
+
+.since-flow { display: inline-flex; align-items: baseline; white-space: nowrap; }
+
+.since-flow__static { font-variant-numeric: tabular-nums; }
+
+/* The viewport is 1.5 rows tall on purpose: the current row sits centred
+   with half a row of its neighbours showing above and below, masked toward
+   transparent at the top and bottom edge. That sliver of the row before and
+   the row after is what reads as a wheel rather than a ticking digit — a
+   flat 1-row window would show only ever one clean number, which looks
+   exactly like the thing this component refuses to be. */
+.since-flow__wheel {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  width: 2.1ch;
+  height: 1.5em;
+  vertical-align: -0.25em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%);
+}
+
+.since-flow__strip {
+  display: block;
+  will-change: transform;
+  /* --since-flow-pos is a bare number (whole seconds + the fraction already
+     elapsed into the current one) written by the script every frame via
+     el.style.setProperty — CSSOM, not an inline style attribute, so this
+     keeps working under `style-src 'self'`. Multiplying it by -1em inside
+     calc() needs no @property registration in any evergreen browser. The
+     +0.25em centres the current row in the 1.5em viewport above. */
+  transform: translateY(calc(var(--since-flow-pos, 0) * -1em + 0.25em));
+}
+
+.since-flow__row {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Visually hidden, not display:none — a screen reader still gets it, and it
+   is the thing that gets it, since the wheel next to it is aria-hidden. */
+.since-flow__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Belt and suspenders: the script itself drops flow mode under reduced
+     motion and renders plain text instead, so this rule should never have
+     anything left to catch. It stays as the CSS-only backstop for the one
+     failure mode that would matter most — a future edit to the script that
+     forgets the reduced-motion check would otherwise leave a wheel spinning
+     in front of someone who asked for stillness. */
+  .since-flow__strip { transition: none; }
+}

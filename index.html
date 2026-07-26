@@ -62,6 +62,27 @@
     </p>
   </section>
 
+  <section class="demo">
+    <p class="label">Flow — <code>data-since-flow</code></p>
+    <p class="reading">
+      <time datetime="2026-05-27T18:40:53-07:00"
+            data-since="2026-05-27T18:40:53-07:00"
+            data-since-flow><span data-since-value>since 27 May 2026</span></time>
+    </p>
+    <pre><code>&lt;time datetime="2026-05-27T18:40:53-07:00"
+      data-since="2026-05-27T18:40:53-07:00"
+      data-since-flow&gt;
+  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
+&lt;/time&gt;</code></pre>
+    <p class="note">Days, hours and minutes are typeset and still. Seconds are
+      a continuous wheel — it does not step from 41 to 42, it travels there,
+      showing exactly where the real elapsed time sits between the two at
+      this instant. A ticking clock cannot do this honestly: it only knows
+      the ticks it has counted, never the distance between them. Try
+      <code>prefers-reduced-motion</code> — the wheel turns off entirely and
+      falls back to plain minute-resolution text.</p>
+  </section>
+
   <section class="demo demo--broken">
     <p class="label">An unparseable epoch</p>
     <p class="reading">

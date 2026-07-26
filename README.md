@@ -86,6 +86,40 @@ answer over from the last one.
 | | `minutes` | `59 days 04:10` |
 | | `days` | `59 days` |
 | | `compact` | `59d 04h 10m 12s` |
+| `data-since-flow` | present (boolean) | `59 days 04:10:` + a continuously moving seconds wheel |
+
+### Flow mode
+
+```html
+<time datetime="2026-05-27T18:40:53-07:00"
+      data-since="2026-05-27T18:40:53-07:00"
+      data-since-flow>
+  <span data-since-value>since 27 May 2026</span>
+</time>
+```
+
+Days, hours and minutes are typeset text — exact whole units, held still.
+Seconds become a continuous vertical odometer: it does not step from 41 to
+42, it travels there, sitting at exactly the fractional position `now -
+start` says it should at that instant.
+
+This is the same idea the whole component is built on, one level deeper. A
+clock that ticks looks computed, but a tick is still a small lie of timing —
+it only knows a second has passed the moment it decides to say so, and
+everything between two ticks is invisible to it. Flow mode reads the same
+`Date.now() - start` this file always computes, just at the precision the
+platform actually offers, and holds the wheel exactly there. There is still
+no accumulator and nothing is tweened toward a target — every frame is a
+fresh computation, the wheel just happens to be a more honest way to display
+a fractional answer than rounding it down to a static digit pair.
+
+`prefers-reduced-motion: reduce` turns flow off completely and falls back to
+plain `minutes`-resolution text — nothing spinning, still live, still
+correct, exactly like a non-flow clock under the same setting. The wheel
+itself is `aria-hidden`; a plain-text sibling carries the actual accessible
+name, updated the same no-`aria-live` way every clock in this file updates,
+so nothing is announced uninvited and nothing reads as a stream of spinning
+digits.
 
 The script sets `data-since-live="on"` on each element it successfully upgrades,
 so you can style the live state differently from the static fallback. Do that:
@@ -132,4 +166,5 @@ park on scroll, which costs nothing but a little battery on a very old browser.
 MIT. See [LICENSE](LICENSE).
 
 Built for [khushin.com](https://khushin.com), where it counts from the first
-commit of the first project.
+commit of the first project — flow mode runs in that site's masthead, next to
+the name.
