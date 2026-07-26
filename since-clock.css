@@ -1,0 +1,19 @@
+/* since-clock — the minimum that keeps a live reading from twitching.
+   Everything else is yours. */
+
+[data-since] {
+  /* A proportional seconds digit changes width as it counts, which drags the
+     whole line left and right once a second and turns a quiet detail into a
+     twitch. Tabular figures are not a nicety here; they are the difference
+     between a clock and a fidget. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Only set once the script has actually upgraded the element. Style the live
+   state and the static fallback differently — a page should not claim
+   something is live unless it is. */
+[data-since-live='on'] {
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 0.1em;
+}

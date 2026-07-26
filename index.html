@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>since-clock — elapsed time, computed rather than counted</title>
+<meta name="description" content="A live reading of how long it has been since a fixed instant. One JS file, one CSS file, no dependencies. Every frame is computed from the epoch, so no frame is ever wrong.">
+<link rel="stylesheet" href="since-clock.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+<main>
+  <header class="head">
+    <p class="kicker">since-clock</p>
+    <h1>Elapsed time, computed rather than counted.</h1>
+    <p class="lede">
+      One <code>.js</code> file, one <code>.css</code> file, no dependencies,
+      no build step. Every frame is computed from the epoch, so no frame it
+      paints is ever wrong.
+    </p>
+  </header>
+
+  <section class="demo">
+    <p class="label">Default — <code>full</code></p>
+    <p class="reading">
+      <time datetime="2026-05-27T18:40:53-07:00"
+            data-since="2026-05-27T18:40:53-07:00"><span data-since-value>since 27 May 2026</span></time>
+    </p>
+    <pre><code>&lt;time datetime="2026-05-27T18:40:53-07:00"
+      data-since="2026-05-27T18:40:53-07:00"&gt;
+  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
+&lt;/time&gt;</code></pre>
+  </section>
+
+  <section class="demo">
+    <p class="label"><code>compact</code></p>
+    <p class="reading">
+      <time datetime="1969-07-20T20:17:40Z"
+            data-since="1969-07-20T20:17:40Z"
+            data-since-format="compact"><span data-since-value>since 20 July 1969</span></time>
+    </p>
+    <p class="note">Since Apollo 11 touched down. Nineteen thousand days is
+      still the honest number — see <em>Units</em> in the README.</p>
+  </section>
+
+  <section class="demo">
+    <p class="label"><code>minutes</code> — and what <code>prefers-reduced-motion</code> gets</p>
+    <p class="reading">
+      <time datetime="2026-01-01T00:00:00Z"
+            data-since="2026-01-01T00:00:00Z"
+            data-since-format="minutes"><span data-since-value>since 1 January 2026</span></time>
+    </p>
+  </section>
+
+  <section class="demo">
+    <p class="label"><code>days</code></p>
+    <p class="reading">
+      <time datetime="2026-01-01T00:00:00Z"
+            data-since="2026-01-01T00:00:00Z"
+            data-since-format="days"><span data-since-value>since 1 January 2026</span></time>
+    </p>
+  </section>
+
+  <section class="demo demo--broken">
+    <p class="label">An unparseable epoch</p>
+    <p class="reading">
+      <time data-since="whenever"><span data-since-value>since some time in 2026</span></time>
+    </p>
+    <p class="note">Left completely alone, fallback intact, no underline. A
+      clock that cannot tell the time should say nothing, not <code>NaN</code>.</p>
+  </section>
+
+  <section class="prose">
+    <h2>The idea</h2>
+    <pre><code>const elapsed = Date.now() - start;</code></pre>
+    <p>
+      Nothing is ever incremented and nothing animates toward a value. There is
+      no accumulator, so there is no first frame showing zero, no drift, and no
+      catch-up after the tab was hidden. Miss a thousand frames and the next one
+      is still exactly right.
+    </p>
+    <p>
+      Which is the whole difference between a clock and a tally. A tally that
+      counts up from zero is briefly <em>wrong</em> — every frame before the last
+      shows a figure that was never true. A clock computed from its epoch has no
+      wrong state to catch.
+    </p>
+    <p>
+      Hide this tab for a while and come back. The reading is correct, and it
+      never had to work out what it missed.
+    </p>
+    <p class="more"><a href="https://github.com/khushinpatel1/since-clock">Source and README →</a></p>
+  </section>
+</main>
+
+<script src="since-clock.js" defer></script>
+</body>
+</html>
