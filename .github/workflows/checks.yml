@@ -1,0 +1,45 @@
+name: Checks
+
+# since-clock has no build, no dependencies and no test runner — the demo page
+# is the test, and that is a human check. So unlike every other repo in the
+# studio this one has a single workflow rather than the ci.yml/docs.yml pair:
+# there is nothing here for ci.yml to ignore, so there is no markdown gap for
+# docs.yml to close. One workflow on every push covers the repo completely.
+#
+# It runs on ubuntu-latest deliberately. Elsewhere the studio pins CI to the
+# self-hosted kp-mac-* runners because GitHub-hosted minutes are metered on
+# private repos and the push volume alone exceeds the 2,000/month pool. This
+# repo is public, so hosted minutes are free — a runner would buy nothing and
+# would tie a published, dependency-free repo to one Mac being awake.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  doc-gc:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history, blobs excluded: doc-gc dates each file with `git log -1`
+      # to report staleness, and on the default shallow checkout that call
+      # returns empty for every file — the report still passes but silently
+      # stops saying anything. Staleness is advisory (only orphan and finished
+      # fail the check), so this is about the report being truthful.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # doc-gc.mjs is dependency-free by design, so there is no install step.
+      - run: node scripts/doc-gc.mjs . --check

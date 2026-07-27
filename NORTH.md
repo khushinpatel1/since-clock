@@ -44,6 +44,15 @@ sitting in the homepage hero.
 Nothing is deployed. The repo is the artefact. `index.html` is a live demo if it
 is ever served, but it is not required to be.
 
+## Checks
+`.github/workflows/checks.yml` runs `node scripts/doc-gc.mjs . --check` on every
+push and PR. One workflow, not the studio's usual `ci.yml`/`docs.yml` pair:
+there is no build and no test runner here, so `ci.yml` would have nothing to
+ignore and there is no markdown gap for a second workflow to close. It runs on
+`ubuntu-latest` rather than a `kp-mac-*` self-hosted runner because this repo is
+public — hosted minutes are free here, and a runner would tie a published,
+dependency-free repo to one Mac being awake. Added 2026-07-27.
+
 ## In flight
 - **Published 2026-07-26**, MIT, at `khushinpatel1/since-clock`. KP's call, made
   the same day the studio's classification policy changed to "public by default
