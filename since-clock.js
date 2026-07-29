@@ -147,17 +147,20 @@
       if (!ds.sinceLabels) labels = legacy.labels;
     }
     if (legacyFlow) {
-      precision = precision || 'flow';
+      // data-since-flow and data-since-format were always orthogonal: format
+      // only ever shaped the *text* fallback (what shows when not flowing),
+      // never whether flow itself ran. A legacy page pairing
+      // data-since-format="minutes" with data-since-flow (khushin's own
+      // masthead did, before this rewrite) must still flow — so flow wins
+      // the continuity question outright, even over an explicit "minutes"
+      // precision from the format table above.
+      precision = precision === 'minutes' ? 'flow' : (precision || 'flow');
       shell = shell || 'rail'; // the exact rendering data-since-flow always produced
     }
 
     units = (units && units.length) ? units : UNIT_ORDER.slice();
     shell = shell || 'bare';
-    // Continuous shells are continuous by default — the wheel/sweep/fill is
-    // what the shell IS, not an opt-in. "seconds" precision, set explicitly,
-    // is the way to keep a shell's chrome while asking it to tick discretely
-    // instead. bare has no continuous mechanism, so it always ticks.
-    precision = precision || (CONTINUOUS_SHELLS.has(shell) ? 'flow' : 'seconds');
+    precision = precision || 'seconds';
 
     return { shell, units, precision, labels, hover };
   };
@@ -167,8 +170,14 @@
   const effectiveUnits = (clock) =>
     clock.precision === 'minutes' ? clock.units.filter((u) => u !== 'seconds') : clock.units;
 
+  // Continuous shells (rail/odometer/dial/strata) are continuous by default —
+  // the wheel/sweep/fill is what the shell IS, not an opt-in. Only "minutes"
+  // precision opts out, by dropping the unit the continuous mechanism reads
+  // in the first place. "seconds" and "flow" are equivalent here: the
+  // distinction only matters for data-since-format's text-only legacy modes,
+  // which never reach a continuous shell without data-since-flow alongside.
   const isContinuous = (clock) =>
-    CONTINUOUS_SHELLS.has(clock.shell) && clock.precision === 'flow' && !motionReduced();
+    CONTINUOUS_SHELLS.has(clock.shell) && clock.precision !== 'minutes' && !motionReduced();
 
   const dateFmt = new Intl.DateTimeFormat(undefined, {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
