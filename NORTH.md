@@ -40,6 +40,41 @@ This shipped the same day the site it was built for — `khushin.com` — put it
 in the masthead next to the name, replacing a plainer clock that had been
 sitting in the homepage hero.
 
+## Five shells, 2026-07-28
+
+KP's brief: turn the clock into the studio's first deliverable design asset —
+"give it the shells and motion... make it something special." The engine did
+not change; everything below is presentation reading the same `now - start`.
+
+`data-since-shell` picks the object: `bare` (plain text, the default), `rail`
+(typeset + flowing-seconds wheel + underline — what khushin.com's masthead
+runs, now formally named), `odometer` (every unit its own wheel), `dial` (one
+ring, seconds sweeping as a continuous arc), `strata` (stacked proportional
+bars, this studio's own idiom). `data-since-units`, `-precision`, `-labels`
+configure what renders; `data-since-hover="reveal"` cross-fades to an
+alternate reading (a different unit, then the epoch) on hover/focus,
+`data-since-hover="scrub"` lets a reader drag through the clock's own history
+— the same idea flow mode is, one level up. All styling is custom properties
+(`--since-size`, `--since-accent`, etc.) — no shell hardcodes a colour, size
+or duration. `data-since-flow` keeps working forever: it maps onto
+`precision="flow"` and, absent an explicit shell, onto `rail` — the exact
+rendering it always produced.
+
+**Budget held: 695 lines JS, 213 lines CSS**, against a 900/500 ceiling — still
+one file each, still zero dependencies, still no build step. `index.html` is
+now the specimen page rather than a test fixture: every shell, both hover
+modes, and a live panel that writes the custom properties so a visitor can
+theme the clock in the page.
+
+**Continuous shells are continuous by default.** rail/odometer/dial/strata's
+wheel/sweep/fill is what the shell *is*, not an opt-in — `data-since-precision
+="seconds"` is how you keep a shell's chrome while asking it to tick
+discretely instead. This took a live prefers-reduced-motion round-trip to get
+right: the DOM structural difference (wheel vs. step column) has to be
+rebuilt on the actual `khushin:motionchange`/`change` event, not diffed
+inside the per-frame paint — the latter looked correct in isolation but never
+fired reliably once folded into the shared rAF loop.
+
 ## Deploy it
 Nothing is deployed. The repo is the artefact. `index.html` is a live demo if it
 is ever served, but it is not required to be.

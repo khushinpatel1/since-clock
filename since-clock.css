@@ -1,47 +1,69 @@
-/* since-clock — the minimum that keeps a live reading from twitching.
-   Everything else is yours. */
+/* since-clock — five shells reading one engine.
+   Every rule below reads a custom property with a fallback; nothing here
+   hardcodes a colour, a size or a duration. A page that never sets any of
+   these still gets a clock that inherits its type and uses currentColor —
+   the fallbacks are the whole point of a component with no build step.
+
+   --since-size     --since-family   --since-weight   --since-gap
+   --since-ink      --since-dim      --since-accent   --since-rule
+   --since-track    --since-radius   --since-ease     --since-duration
+*/
 
 [data-since] {
   /* A proportional seconds digit changes width as it counts, which drags the
      whole line left and right once a second and turns a quiet detail into a
-     twitch. Tabular figures are not a nicety here; they are the difference
-     between a clock and a fidget. */
+     twitch. Tabular figures are the difference between a clock and a fidget. */
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+  font-family: var(--since-family, inherit);
+  font-weight: var(--since-weight, inherit);
 }
 
-/* Only set once the script has actually upgraded the element. Style the live
-   state and the static fallback differently — a page should not claim
-   something is live unless it is. */
-[data-since-live='on'] {
-  border-bottom: 1px solid currentColor;
+/* Only set once the script has actually upgraded the element — a page should
+   not claim something is live unless it is. The underline "rail" is scoped to
+   the two typeset shells; odometer/dial/strata carry their own chrome. */
+[data-since-live='on'][data-since-shell='bare'],
+[data-since-live='on'][data-since-shell='rail'],
+[data-since-live='on']:not([data-since-shell]) {
+  border-bottom: 1px solid var(--since-rule, currentColor);
   padding-bottom: 0.1em;
 }
 
-/* ---------- flow mode (data-since-flow) ----------
-   A continuous odometer for the seconds column. `.since-flow` is decorative
-   and aria-hidden in the markup the script builds; `.since-flow__sr` is the
-   plain-text sibling that carries the real accessible name, so nothing here
-   needs re-describing for assistive tech — that is handled at the DOM level,
-   not in CSS. What CSS owns is making the wheel look and move like one:
-   letterpress digits behind a hairline mask, in constant motion, never at
-   rest on a step.
+.since {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--since-gap, 0.35em);
+  white-space: nowrap;
+  font-size: var(--since-size, 1em);
+  color: var(--since-ink, currentColor);
+}
 
-   Everything that changes every frame — the strip's position — is a
-   `transform`, and nothing else here is touched per frame. That keeps this
-   on the compositor: no layout, no paint, just a moved layer. */
+.since__text { font-variant-numeric: tabular-nums; }
 
-.since-flow { display: inline-flex; align-items: baseline; white-space: nowrap; }
+.since__sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; white-space: nowrap; border: 0; clip-path: inset(50%);
+}
 
-.since-flow__static { font-variant-numeric: tabular-nums; }
+/* ---------- the beat mark ----------
+   The one real event a clock has: a minute passing. A small mark rather than
+   the separator itself, so every shell — typeset, ringed or barred — can
+   carry the same instrument without special-casing its own punctuation. */
+.since-beat {
+  display: inline-block;
+  width: 0.28em;
+  height: 0.28em;
+  border-radius: 50%;
+  background: var(--since-accent, currentColor);
+  opacity: 0.7;
+}
 
-/* The viewport is 1.5 rows tall on purpose: the current row sits centred
-   with half a row of its neighbours showing above and below, masked toward
-   transparent at the top and bottom edge. That sliver of the row before and
-   the row after is what reads as a wheel rather than a ticking digit — a
-   flat 1-row window would show only ever one clean number, which looks
-   exactly like the thing this component refuses to be. */
-.since-flow__wheel {
+/* ---------- wheels (rail, odometer's seconds column) ----------
+   Letterpress digits behind a hairline mask, in constant motion, never at
+   rest on a step. Everything that changes every frame is a transform —
+   nothing else here is touched per frame, which keeps this on the
+   compositor. */
+.since-wheel {
   position: relative;
   display: inline-block;
   overflow: hidden;
@@ -49,50 +71,143 @@
   height: 1.5em;
   vertical-align: -0.25em;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
   mask-image: linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 38%, black 62%, transparent 100%);
 }
+.since-wheel__strip { display: block; will-change: transform; }
+.since-wheel__row { display: block; height: 1em; line-height: 1; text-align: center; }
+.since-wheel--odometer { width: 2.3ch; }
 
-.since-flow__strip {
-  display: block;
-  will-change: transform;
-  /* --since-flow-pos is a bare number (whole seconds + the fraction already
-     elapsed into the current one) written by the script every frame via
-     el.style.setProperty — CSSOM, not an inline style attribute, so this
-     keeps working under `style-src 'self'`. Multiplying it by -1em inside
-     calc() needs no @property registration in any evergreen browser. The
-     +0.25em centres the current row in the 1.5em viewport above. */
-  transform: translateY(calc(var(--since-flow-pos, 0) * -1em + 0.25em));
-}
-
-.since-flow__row {
-  display: block;
-  height: 1em;
-  line-height: 1;
+/* ---------- odometer's stepped columns (days/hours/minutes) ----------
+   Unbounded or too-wide-to-pre-build values step rather than flow: the old
+   value slides out, the new one slides in, over one CSS-timed transition
+   rather than a per-frame position. */
+.since-wheel__col {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  min-width: 1.6ch;
   text-align: center;
 }
-
-/* Visually hidden, not display:none — a screen reader still gets it, and it
-   is the thing that gets it, since the wheel next to it is aria-hidden. */
-.since-flow__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  border: 0;
-  clip-path: inset(50%);
+.since-wheel__cur, .since-wheel__ghost {
+  display: block;
+  position: relative;
 }
+.since-wheel__ghost { position: absolute; inset: 0; }
+.since__sep {
+  opacity: var(--since-dim, 0.55);
+  margin-inline: -0.1em;
+}
+.since__sep::before { content: ':'; }
+
+/* ---------- dial ----------
+   One ring. Numerals typeset inside it; the sweep is the only thing on this
+   site's clock family that reads as a continuous arc rather than a wheel. */
+.since--dial { position: relative; display: inline-grid; place-items: center; }
+.since-dial { grid-area: 1 / 1; width: 2.6em; height: 2.6em; transform: rotate(-90deg); }
+.since-dial__track {
+  fill: none;
+  stroke: var(--since-track, color-mix(in srgb, currentColor 14%, transparent));
+  stroke-width: 2.4;
+}
+.since-dial__sweep {
+  fill: none;
+  stroke: var(--since-accent, currentColor);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--since-duration, 300ms) var(--since-ease, ease);
+}
+.since-dial__text {
+  grid-area: 1 / 1;
+  font-size: 0.34em;
+  text-align: center;
+  line-height: 1.1;
+  white-space: normal;
+  max-width: 2.1em;
+}
+.since--dial .since-beat { position: absolute; bottom: -0.2em; }
+
+/* ---------- strata ----------
+   Elapsed time as stacked proportional bars: each unit a fraction of the one
+   above it, read top to bottom exactly the way the number is spoken. */
+.since--strata {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.18em;
+  min-width: 8em;
+}
+.since-strata__head { font-variant-numeric: tabular-nums; }
+.since-strata__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.since-strata__label {
+  font-size: 0.75em;
+  opacity: var(--since-dim, 0.55);
+  width: 1ch;
+}
+.since-strata__track {
+  flex: 1;
+  height: 0.4em;
+  border-radius: var(--since-radius, 0.2em);
+  background: var(--since-track, color-mix(in srgb, currentColor 12%, transparent));
+  overflow: hidden;
+}
+.since-strata__fill {
+  display: block;
+  height: 100%;
+  background: var(--since-accent, currentColor);
+  border-radius: inherit;
+  transition: width var(--since-duration, 300ms) var(--since-ease, ease);
+}
+.since--strata .since-beat { align-self: flex-start; margin-top: 0.1em; }
+
+/* ---------- reveal (data-since-hover="reveal") ----------
+   An absolutely-positioned overlay, sized to its parent rather than measured —
+   the reading beneath it dims instead of being removed, so nothing reflows
+   when the alternate fades in and nothing reflows when it fades back out. */
+[data-since-hover='reveal'] { cursor: default; }
+.since.is-revealing > :not(.since-reveal) { opacity: 0.15; }
+.since-reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--since-duration, 300ms) var(--since-ease, ease);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.since-reveal.is-active { opacity: 1; }
+
+/* ---------- scrub (data-since-hover="scrub") ----------
+   The element becomes an interactive control: cursor and outline say so, and
+   the outline follows the page's own focus ring rather than inventing one. */
+[data-since-hover='scrub'] { cursor: ew-resize; touch-action: none; }
+[data-since-hover='scrub']:focus-visible { outline-offset: 3px; }
+
+/* ---------- mount ----------
+   Numerals rise into place from a mask, once, on first real paint. Never
+   again — see the JS header for why a repeating entrance would break the
+   component's whole argument. */
+@keyframes since-rise {
+  from { opacity: 0; transform: translateY(0.35em); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.since-mount { animation: since-rise 520ms var(--since-ease, ease) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Belt and suspenders: the script itself drops flow mode under reduced
-     motion and renders plain text instead, so this rule should never have
-     anything left to catch. It stays as the CSS-only backstop for the one
-     failure mode that would matter most — a future edit to the script that
-     forgets the reduced-motion check would otherwise leave a wheel spinning
-     in front of someone who asked for stillness. */
-  .since-flow__strip { transition: none; }
+  /* Belt and suspenders: the script itself drops every continuous mechanism
+     and skips mount/beat under reduced motion. This is the CSS-only backstop
+     for the one failure mode that would matter most — a future edit to the
+     script that forgets the check. */
+  .since-wheel__strip, .since-dial__sweep, .since-strata__fill { transition: none; }
+  .since-mount { animation: none; }
 }

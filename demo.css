@@ -33,3 +33,20 @@ code { font-family: var(--mono); font-size: 0.82rem; }
 .prose em { color: var(--ink); font-style: italic; }
 .more { margin-top: 2rem; }
 a { color: var(--ink); }
+
+/* ---------- theme panel ---------- */
+.panel {
+  border: 1px solid var(--hairline); border-radius: 6px; padding: 1.25rem 1.5rem;
+  margin-bottom: 3rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+.panel label { display: block; font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.panel input { width: 100%; }
+.stage {
+  border: 1px solid var(--hairline); border-radius: 6px; padding: 2rem 1.5rem;
+  display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; margin-bottom: 1rem;
+}
+.shell-demo { border-top: 1px solid var(--hairline); padding: 2rem 0; }
+.shell-demo__grid { display: flex; flex-wrap: wrap; gap: 2.5rem; align-items: flex-start; margin: 1.25rem 0; }
+.shell-demo__variant { display: flex; flex-direction: column; gap: 0.6rem; }
+.shell-demo__variant .tag { font-family: var(--mono); font-size: 0.68rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.shell-demo__variant .reading { margin: 0; }
