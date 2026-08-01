@@ -1,0 +1,558 @@
+/* since-studio — the console that opens out of the clock.
+
+   This file is NOT part of the component. since-clock.js and since-clock.css
+   are the product: one file each, no dependencies, no build step, and nothing
+   in here is required to use them. The studio is an optional second layer that
+   a page opts into with data-since-studio, and it exists for exactly one
+   page — the specimen. Keeping it separate is what lets the component stay
+   803 lines and honest about its weight.
+
+   ── the line this file does not cross ────────────────────────────────────
+
+   Motion may dress the clock. It may never falsify it.
+
+   Every effect below is adapted from motion-kit (khushinpatel1/motion-kit,
+   MIT, same author), and two of them had to be adapted rather than copied
+   because the kit was written for marketing surfaces where the text is
+   decoration. Here the text is a measurement:
+
+     · text-scramble-hover rewrites characters to random glyphs and settles
+       them. Pointed at a clock's numerals that is a component displaying
+       readings that were never true — the one thing since-clock exists to
+       never do. It is wired to the *labels* ("days", "hours") instead, which
+       are words and can be played with.
+     · shimmer-text is allowed on the numerals, because it changes their
+       colour and not their content. That is the whole test.
+
+   Effects that dress chrome — the plate, the ring, the console — are
+   unrestricted. Effects that touch the reading must leave the reading true.
+
+   ── tokens ───────────────────────────────────────────────────────────────
+
+   motion-kit's tokens.css, vendored rather than linked: the studio is one
+   page, and a second network file to hold nine custom properties is not a
+   system, it is a dependency. The values are the kit's, unchanged, so an
+   effect lifted from the kit keeps the timing it was designed with.
+*/
+
+:root {
+  --motion-instant: 120ms;
+  --motion-fast: 250ms;
+  --motion-base: 450ms;
+  --motion-slow: 900ms;
+  --motion-ambient: 3000ms;
+  --ease-out-expressive: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-linear: linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0ms;
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-ambient: 0ms;
+  }
+}
+
+/* The override. Someone whose OS asks for reduced motion still gets to look
+   at a page about motion — they just have to say so, once, deliberately, on
+   this page only. data-motion-override="allow" on <html> restores the token
+   values the media query above zeroed. Everything else in this file and in
+   since-clock.js reads prefers-reduced-motion through a helper that honours
+   this flag, so one switch moves the whole page. */
+:root[data-motion-override='allow'] {
+  --motion-instant: 120ms;
+  --motion-fast: 250ms;
+  --motion-base: 450ms;
+  --motion-slow: 900ms;
+  --motion-ambient: 3000ms;
+}
+
+/* ========================================================================
+   The seat — where a studio clock rests before and after the console.
+   ===================================================================== */
+
+.studio-seat {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  padding: clamp(1.4rem, 4vw, 3rem) clamp(1.8rem, 5vw, 4rem);
+  border-radius: 28px;
+  isolation: isolate;
+  cursor: pointer;
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.14));
+  background: var(--studio-plate, rgba(9, 12, 25, 0.42));
+  transition:
+    border-color var(--motion-fast) var(--ease-out-soft),
+    box-shadow var(--motion-fast) var(--ease-out-soft);
+}
+
+.studio-seat:hover,
+.studio-seat:focus-visible {
+  border-color: var(--studio-edge-hi, rgba(255, 255, 255, 0.34));
+}
+
+/* The affordance is deliberately almost nothing. A clock that shouts "click
+   me" has stopped being an object and started being a button; this says it
+   only once the pointer is already there, and never on touch. */
+.studio-seat__hint {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-out-soft),
+    transform var(--motion-fast) var(--ease-out-soft);
+}
+
+@media (hover: hover) {
+  .studio-seat:hover .studio-seat__hint,
+  .studio-seat:focus-visible .studio-seat__hint {
+    opacity: 0.55;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* While the clock is away in the console, the seat holds its exact size open
+   so the page behind does not reflow and then reflow back. */
+.studio-seat.is-vacant {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--studio-edge, rgba(255, 255, 255, 0.1));
+  background: none;
+}
+/* Suspended for the duration of a FLIP. The float effect animates `translate`
+   and so does the FLIP; without this they fight and the clock arrives at the
+   console a few pixels off from where it was measured to land. */
+.studio-plate.is-flipping { animation: none; }
+
+/* ========================================================================
+   The plate — the clock's immediate surface, and what every element-tier
+   effect actually decorates. Effects are opted in per-token via data-fx,
+   which is a space-separated list so `[data-fx~='aurora']` matches one word.
+   ===================================================================== */
+
+.studio-plate {
+  --x: 50%;
+  --y: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  /* Derived, not set inline — see the `live` note in studio.js. This is what
+     lets .studio-stage .studio-plate multiply the reader's chosen size. */
+  --since-size: var(--studio-size, 1.6em);
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform var(--motion-fast) var(--ease-out-soft);
+  transform-style: preserve-3d;
+}
+
+/* ---- aurora-glass (ambient) ---------------------------------------- */
+.studio-plate[data-fx~='aurora'] {
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(9, 12, 25, 0.42);
+  backdrop-filter: blur(22px);
+}
+.studio-plate[data-fx~='aurora']::before,
+.studio-plate[data-fx~='aurora']::after {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  width: 70%;
+  height: 130%;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.66;
+  background: linear-gradient(
+    135deg,
+    var(--since-accent, #7c3aed),
+    #06b6d4,
+    #22c55e
+  );
+  background-size: 220% 220%;
+  animation: studio-drift var(--motion-ambient) var(--ease-linear) infinite alternate;
+}
+.studio-plate[data-fx~='aurora']::before { left: -28%; top: -45%; }
+.studio-plate[data-fx~='aurora']::after {
+  right: -28%;
+  bottom: -45%;
+  animation-delay: calc(var(--motion-ambient) * -0.4333);
+  transform: rotate(150deg);
+}
+@keyframes studio-drift {
+  0% { background-position: 0% 30%; transform: translate3d(-4%, 0, 0) rotate(0); }
+  100% { background-position: 100% 70%; transform: translate3d(4%, 5%, 0) rotate(18deg); }
+}
+
+/* ---- cursor-spotlight-card (reactive) ------------------------------- */
+.studio-plate[data-fx~='spotlight'] {
+  background-image: radial-gradient(
+    circle at var(--x) var(--y),
+    color-mix(in srgb, var(--since-accent, #7dd3fc) 34%, transparent),
+    transparent 30%
+  );
+}
+
+/* ---- dimensional-tilt-card's sheen (reactive) ----------------------- */
+.studio-plate[data-fx~='sheen'] {
+  overflow: hidden;
+}
+.studio-plate[data-fx~='sheen']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  transition: transform var(--motion-base) var(--ease-out-expressive);
+}
+.studio-plate[data-fx~='sheen']:hover::after { transform: translateX(120%); }
+
+/* ---- noise-grain-overlay (atmosphere) ------------------------------- */
+.studio-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  transition: opacity var(--motion-base) var(--ease-out-soft);
+}
+.studio-plate[data-fx~='grain'] .studio-grain { opacity: 0.14; }
+
+/* ---- floating-card (ambient idle) ----------------------------------- */
+.studio-plate[data-fx~='float'] {
+  animation: studio-float var(--motion-ambient) var(--ease-out-soft) infinite;
+}
+.studio-plate[data-fx~='float']:hover { animation-play-state: paused; }
+@keyframes studio-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -9px; }
+}
+
+/* ---- shimmer-text (ambient, allowed on numerals) -------------------- */
+/* Colour only. The characters underneath are exactly what the engine
+   computed — see this file's header for why that distinction is the whole
+   rule. Applied to the typeset text and the wheel strip alike. */
+.studio-plate[data-fx~='shimmer'] .since__text,
+.studio-plate[data-fx~='shimmer'] .since-wheel__row,
+.studio-plate[data-fx~='shimmer'] .since-wheel__cur,
+.studio-plate[data-fx~='shimmer'] .since-strata__head {
+  color: transparent;
+  background: linear-gradient(
+    110deg,
+    var(--since-ink, #94a3b8) 25%,
+    color-mix(in srgb, var(--since-accent, #fff) 70%, white) 45%,
+    var(--since-ink, #94a3b8) 65%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: studio-sweep var(--motion-ambient) var(--ease-linear) infinite;
+}
+@keyframes studio-sweep {
+  to { background-position: -250% 0; }
+}
+
+/* ---- pulse-ring (the minute beat) ----------------------------------- */
+/* since-clock draws a beat mark and pulses it with the Web Animations API on
+   each minute boundary. This wraps that same mark in the kit's expanding
+   rings, so the beat reads as an instrument rather than a dot. The rings are
+   ambient and continuous; the engine's own pulse is the actual event. */
+.studio-plate[data-fx~='pulse'] .since-beat { position: relative; }
+.studio-plate[data-fx~='pulse'] .since-beat::before,
+.studio-plate[data-fx~='pulse'] .since-beat::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1px solid var(--since-accent, currentColor);
+  border-radius: 50%;
+  animation: studio-pulse var(--motion-slow) var(--ease-out-soft) infinite;
+}
+.studio-plate[data-fx~='pulse'] .since-beat::after {
+  animation-delay: calc(var(--motion-slow) * -0.5);
+}
+@keyframes studio-pulse {
+  0% { opacity: 0.8; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(2.8); }
+}
+
+/* ---- text-scramble-hover, on labels only ---------------------------- */
+.tsh-label {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; white-space: nowrap; border: 0; clip-path: inset(50%);
+}
+.studio-scramble { font-variant-numeric: tabular-nums; }
+
+/* ---- particle-cursor-trail ------------------------------------------ */
+.studio-spark {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 90;
+  background: var(--since-accent, #7dd3fc);
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx],
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx]::before,
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx]::after,
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx] .since__text,
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx] .since-beat::before,
+  :root:not([data-motion-override='allow']) .studio-plate[data-fx] .since-beat::after {
+    animation: none;
+  }
+  :root:not([data-motion-override='allow']) .studio-plate { transform: none; }
+}
+
+/* ========================================================================
+   The console — what the seat FLIPs into.
+   ===================================================================== */
+
+.studio-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--studio-scrim, rgba(4, 6, 14, 0.72));
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out-soft);
+}
+.studio-scrim.is-open { opacity: 1; }
+
+/* The console sets its own ink rather than inheriting the page's. It is a
+   dark overlay and the host page may well be light — inheriting would put
+   near-black text on the scrim and hide the entire panel. */
+.studio-console {
+  color: #ecebe8;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  pointer-events: none;
+}
+.studio-console > * { pointer-events: auto; }
+
+/* The stage holds the clock while the console is open. It is the FLIP
+   destination: studio.js measures the seat, moves the clock here, measures
+   again, and animates the difference away. */
+.studio-stage {
+  display: grid;
+  place-items: center;
+  padding: clamp(1.5rem, 5vh, 3.5rem) 1rem clamp(1rem, 3vh, 2rem);
+  min-height: clamp(140px, 26vh, 260px);
+}
+
+/* The clock is bigger in the console than in its seat, which is what gives
+   the FLIP something to scale. The multiplier is applied to whatever size the
+   reader has chosen rather than replacing it, so the size slider still means
+   what it says while the console is open. */
+.studio-stage .studio-plate {
+  padding: 1.2rem 2rem;
+  --since-size: calc(var(--studio-size, 1.6em) * 1.5);
+}
+
+.studio-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 clamp(1rem, 4vw, 2.5rem) clamp(2rem, 6vh, 4rem);
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  align-content: start;
+  max-width: 1180px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+/* Control groups rise in on a stagger once the FLIP has landed —
+   char-rise-reveal's curve and idea, applied to blocks instead of glyphs.
+   --i is set per group by studio.js. */
+.studio-group {
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.12));
+  border-radius: 16px;
+  padding: 1rem 1.1rem 1.15rem;
+  background: var(--studio-panel-bg, rgba(255, 255, 255, 0.03));
+  opacity: 0;
+  transform: translateY(14px);
+}
+.studio-console.is-open .studio-group {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-base) var(--ease-out-expressive),
+    transform var(--motion-base) var(--ease-out-expressive);
+  transition-delay: calc(var(--i, 0) * 45ms + 120ms);
+}
+
+.studio-group > h3 {
+  margin: 0 0 0.8rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  font-weight: 600;
+}
+
+.studio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+.studio-row > label { opacity: 0.78; }
+
+.studio-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.studio-chip {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.34em 0.75em;
+  border-radius: 999px;
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.16));
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-instant) var(--ease-out-soft),
+    border-color var(--motion-instant) var(--ease-out-soft),
+    transform var(--motion-instant) var(--ease-out-soft);
+}
+.studio-chip:hover { border-color: var(--studio-edge-hi, rgba(255, 255, 255, 0.4)); }
+.studio-chip[aria-pressed='true'] {
+  background: var(--since-accent, #c81e3a);
+  border-color: var(--since-accent, #c81e3a);
+  color: #fff;
+}
+/* magnetic-action-button: JS writes --mx/--my from the pointer. */
+.studio-chip { transform: translate(var(--mx, 0px), var(--my, 0px)); }
+
+.studio-swatches { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.studio-swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--motion-instant) var(--ease-out-soft);
+}
+.studio-swatch:hover { transform: scale(1.15); }
+.studio-swatch[aria-pressed='true'] { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.studio-row input[type='range'] { flex: 1; max-width: 55%; accent-color: var(--since-accent, #c81e3a); }
+.studio-row input[type='color'] { inline-size: 2.2rem; block-size: 1.6rem; border: 0; background: none; padding: 0; }
+.studio-row input[type='datetime-local'],
+.studio-row select {
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.16));
+  border-radius: 8px;
+  padding: 0.25em 0.4em;
+}
+
+.studio-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  opacity: 0.45;
+}
+
+/* The output group spans the grid: it is the payload, not a control. */
+.studio-group--out { grid-column: 1 / -1; }
+.studio-out {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  padding: 0.8rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.1));
+}
+.studio-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.7rem; }
+
+.studio-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 60;
+  font: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5em 0.9em;
+  border-radius: 999px;
+  border: 1px solid var(--studio-edge, rgba(255, 255, 255, 0.18));
+  background: rgba(0, 0, 0, 0.3);
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The reduced-motion disclosure. Not a toast and not a dismissable banner —
+   it sits in the motion group, permanently, because it is a true statement
+   about the page and it stays true until the reader changes it. */
+.studio-rm {
+  display: none;
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--since-accent, #c81e3a) 40%, transparent);
+  background: color-mix(in srgb, var(--since-accent, #c81e3a) 10%, transparent);
+}
+.studio-rm.is-shown { display: block; }
+.studio-rm button {
+  font: inherit;
+  font-size: 0.72rem;
+  margin-top: 0.5rem;
+  padding: 0.35em 0.8em;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Effects the reader has switched off, or that the OS has switched off for
+   them, still show as options — greyed, never removed. A motion picker that
+   hides its own options under reduced motion is telling the reader what they
+   are allowed to want. */
+.studio-chip[data-stilled='true'] {
+  opacity: 0.4;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}

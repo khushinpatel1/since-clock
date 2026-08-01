@@ -69,8 +69,20 @@
   if (!nodes.length) return;
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const motionReduced = () =>
-    reduced.matches || document.documentElement.getAttribute('data-motion') === 'reduced';
+
+  /* data-motion on <html> is the host page's say over the OS setting, in both
+     directions. "reduced" forces stillness for a page that wants it without
+     the reader having changed anything system-wide; "allow" is the opposite
+     and is the harder one to justify, so: a page *about* motion has to be
+     able to show motion to someone who asked for less of it, provided they
+     asked for it here, deliberately, and can put it back. Absent the
+     attribute the OS setting decides, which is the default and the case
+     every consumer of this file gets. */
+  const motionReduced = () => {
+    const flag = document.documentElement.getAttribute('data-motion');
+    if (flag === 'allow') return false;
+    return reduced.matches || flag === 'reduced';
+  };
 
   const MS = { second: 1000, minute: 60000, hour: 3600000, day: 86400000 };
   const pad = (n) => String(n).padStart(2, '0');
@@ -184,22 +196,32 @@
   });
 
   const clocks = [];
+  let io = null;
 
-  for (const node of nodes) {
+  // Registration is a function rather than a loop body because it is called
+  // twice: once over the document at load, and again by refresh() for any
+  // clock that appeared afterwards. Registering an already-live node is a
+  // no-op, so refresh() can be called as often as a caller likes.
+  const register = (node) => {
+    if (node.dataset.sinceLive === 'on') return null;
     const start = Date.parse(node.dataset.since);
     // An unparseable epoch leaves the server-rendered fallback exactly as it
     // is. A clock that cannot tell the time should say nothing, not "NaN".
-    if (!Number.isFinite(start)) continue;
+    if (!Number.isFinite(start)) return null;
 
-    const cfg = parseConfig(node);
-    const target = node.querySelector('[data-since-value]') || node;
-    clocks.push({
-      node, target, start, ...cfg,
+    const clock = {
+      node, target: node.querySelector('[data-since-value]') || node, start,
+      ...parseConfig(node),
       last: null, lastTick: null, minuteBoundary: null, mounted: false,
       scrubElapsed: null, revealTimer: 0, dom: null, visible: true,
-    });
+    };
+    clocks.push(clock);
     node.dataset.sinceLive = 'on';
-  }
+    if (io) io.observe(node);
+    return clock;
+  };
+
+  for (const node of nodes) register(node);
 
   if (!clocks.length) return;
 
@@ -400,7 +422,7 @@
   };
 
   const startReveal = (clock) => {
-    if (!clock.dom.reveal) return;
+    if (!clock.dom || !clock.dom.reveal) return;
     const overlay = clock.dom.reveal;
     clock.dom.root.classList.add('is-revealing');
     let i = 0;
@@ -415,7 +437,7 @@
   };
 
   const stopReveal = (clock) => {
-    if (!clock.dom.reveal) return;
+    if (!clock.dom || !clock.dom.reveal) return;
     clearInterval(clock.revealTimer);
     clock.dom.reveal.classList.remove('is-active');
     clock.dom.root.classList.remove('is-revealing');
@@ -433,11 +455,32 @@
     setTimeout(() => clock.dom.scrubSr.setAttribute('aria-live', 'off'), 1000);
   };
 
-  const wireScrub = (clock) => {
+  // Behaviours are wired once per node and read clock.hover at event time,
+  // rather than being attached only for the mode configured at build. That is
+  // what lets data-since-hover change on a live element: there is no listener
+  // to remove, only a mode to re-read. Same reason the role/tabIndex below is
+  // applied as state rather than set once.
+  const applyHoverRole = (clock) => {
     const node = clock.node;
-    node.tabIndex = 0;
-    node.setAttribute('role', 'slider');
-    node.setAttribute('aria-label', 'Scrub elapsed time');
+    if (clock.hover === 'scrub') {
+      node.tabIndex = 0;
+      node.setAttribute('role', 'slider');
+      node.setAttribute('aria-label', 'Scrub elapsed time');
+    } else {
+      node.removeAttribute('role');
+      node.removeAttribute('aria-label');
+      if (node.tabIndex === 0 && !node.hasAttribute('tabindex')) node.tabIndex = -1;
+      node.removeAttribute('tabindex');
+    }
+  };
+
+  const wireBehaviors = (clock) => {
+    const node = clock.node;
+
+    node.addEventListener('mouseenter', () => { if (clock.hover === 'reveal') startReveal(clock); });
+    node.addEventListener('mouseleave', () => { if (clock.hover === 'reveal') stopReveal(clock); });
+    node.addEventListener('focusin', () => { if (clock.hover === 'reveal') startReveal(clock); });
+    node.addEventListener('focusout', () => { if (clock.hover === 'reveal') stopReveal(clock); });
 
     const scrubTo = (elapsed) => {
       clock.scrubElapsed = Math.max(0, Math.min(Date.now() - clock.start, elapsed));
@@ -451,24 +494,42 @@
       announce(clock, at);
     };
 
-    let dragging = false;
-    node.addEventListener('pointerdown', (e) => {
-      dragging = true;
-      node.setPointerCapture(e.pointerId);
+    /* Tap and drag share one pointer on this element: a scrub clock that also
+       opens something on click cannot decide which it is at pointerdown. So
+       pointerdown decides nothing — it arms, and the first movement past
+       TAP_SLOP is what commits to scrubbing. Under the slop the gesture stays
+       a tap and the element's own click handler (the studio's, or a
+       consumer's) fires untouched. */
+    const TAP_SLOP = 6;
+    let armed = false, dragging = false, originX = 0;
+
+    const at = (clientX) => {
       const rect = node.getBoundingClientRect();
-      const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      scrubTo(frac * (Date.now() - clock.start));
+      const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return frac * (Date.now() - clock.start);
+    };
+
+    node.addEventListener('pointerdown', (e) => {
+      if (clock.hover !== 'scrub') return;
+      armed = true;
+      originX = e.clientX;
     });
     node.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const rect = node.getBoundingClientRect();
-      const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      scrubTo(frac * (Date.now() - clock.start));
+      if (!armed) return;
+      if (!dragging) {
+        if (Math.abs(e.clientX - originX) < TAP_SLOP) return;
+        dragging = true;
+        node.setPointerCapture(e.pointerId);
+        scrubTo(at(originX));
+      }
+      scrubTo(at(e.clientX));
     });
-    node.addEventListener('pointerup', () => { dragging = false; release(); });
-    node.addEventListener('pointercancel', () => { dragging = false; release(); });
+    const endDrag = () => { armed = false; dragging = false; release(); };
+    node.addEventListener('pointerup', endDrag);
+    node.addEventListener('pointercancel', endDrag);
 
     node.addEventListener('keydown', (e) => {
+      if (clock.hover !== 'scrub') return;
       const now = Date.now() - clock.start;
       const base = clock.scrubElapsed != null ? clock.scrubElapsed : now;
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
@@ -498,6 +559,7 @@
   const WHEEL_SHELLS = new Set(['rail', 'odometer']);
 
   const initClock = (clock) => {
+    stopReveal(clock);
     BUILDERS[clock.shell](clock);
     clock.dom.root.style.position = 'relative';
     if (clock.hover === 'reveal') clock.dom.reveal = buildRevealOverlay(clock.dom.root);
@@ -507,17 +569,13 @@
       clock.dom.root.appendChild(sr);
       clock.dom.scrubSr = sr;
     }
+    applyHoverRole(clock);
+    clock.last = null;
     clock.target.textContent = '';
     clock.target.appendChild(clock.dom.root);
     if (clock.behaviorsWired) return;
     clock.behaviorsWired = true;
-    if (clock.hover === 'reveal') {
-      clock.node.addEventListener('mouseenter', () => startReveal(clock));
-      clock.node.addEventListener('mouseleave', () => stopReveal(clock));
-      clock.node.addEventListener('focusin', () => startReveal(clock));
-      clock.node.addEventListener('focusout', () => stopReveal(clock));
-    }
-    if (clock.hover === 'scrub') wireScrub(clock);
+    wireBehaviors(clock);
   };
 
   // Numerals rise into place from a mask, once, on first real paint. Never
@@ -660,7 +718,7 @@
      on for no reason. Coming back does not need a catch-up pass, because
      there is nothing to catch up — the next computed frame is simply right. */
   if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((entries) => {
+    io = new IntersectionObserver((entries) => {
       let changed = false;
       for (const entry of entries) {
         const clock = clocks.find((c) => c.node === entry.target);
@@ -696,6 +754,59 @@
   };
   reduced.addEventListener('change', motionChanged);
   addEventListener('khushin:motionchange', motionChanged);
+
+  /* ---- live reconfiguration ---------------------------------------------
+
+     This file used to read every data-since-* attribute exactly once, at
+     load, and never again. Two consequences, which are really one missing
+     capability: a clock inserted by a framework after hydration never
+     started, and an attribute changed on a running clock did nothing.
+     refresh() is that capability — it registers clocks it has not seen and
+     re-reads configuration on the ones it has, rebuilding only what actually
+     changed. Explicit rather than a MutationObserver: a component this small
+     should not run an observer over a stranger's document for a case most
+     pages never hit.
+
+     What it deliberately does not do is re-mount. The entrance plays once
+     per element, ever. A shell swapped underneath a running clock must show
+     the correct reading in its first painted frame — no rise, no fade, no
+     zero — because the whole argument of this file is that the number
+     survives whatever happens to the object drawn around it. An entrance
+     replayed on every change would be the component contradicting itself in
+     public. */
+  const CONFIG_KEYS = ['shell', 'precision', 'labels', 'hover'];
+
+  const refresh = () => {
+    for (const node of document.querySelectorAll('[data-since]')) register(node);
+
+    for (const clock of clocks) {
+      const next = parseConfig(clock.node);
+      let changed = CONFIG_KEYS.some((k) => clock[k] !== next[k])
+        || next.units.join() !== clock.units.join();
+
+      // The epoch itself is configuration too. Moving it is the one change
+      // that legitimately resets the beat: there is no longer any relationship
+      // between the minute boundary just crossed and the one coming.
+      const start = Date.parse(clock.node.dataset.since);
+      if (Number.isFinite(start) && start !== clock.start) {
+        clock.start = start;
+        clock.minuteBoundary = null;
+        changed = true;
+      }
+
+      if (!changed) continue;
+      Object.assign(clock, next);
+      if (clock.dom) initClock(clock);
+      paint(clock);
+    }
+
+    refreshLive();
+    wake();
+  };
+
+  // The only global this file defines. `clocks` is exposed read-mostly so a
+  // host page can see what was upgraded; `refresh` is the supported API.
+  window.SinceClock = { refresh, clocks };
 
   // Paint once immediately, so the upgrade from the static fallback happens in
   // the first frame rather than up to a second later.

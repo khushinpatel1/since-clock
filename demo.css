@@ -34,6 +34,25 @@ code { font-family: var(--mono); font-size: 0.82rem; }
 .more { margin-top: 2rem; }
 a { color: var(--ink); }
 
+/* ---------- the hero ----------
+   The instrument gets its own dark ground in both colour schemes. Partly so
+   the aurora and the grain have something to be seen against, and partly
+   because the console it opens into is dark: a light plate that turns dark
+   the instant you click it is a flinch, and the whole point of the FLIP is
+   that nothing about the object changes except its size and its place. */
+.hero {
+  margin: 0 0 3.5rem;
+  padding: clamp(2rem, 6vw, 3.5rem) clamp(1rem, 4vw, 2rem);
+  border-radius: 22px;
+  background: radial-gradient(120% 120% at 50% 0%, #1c1d24 0%, #0a0a0d 72%);
+  color: #ecebe8;
+  display: grid;
+  justify-items: center;
+  gap: 1.6rem;
+  text-align: center;
+}
+.hero__note { color: rgba(236, 235, 232, 0.6); max-width: 32rem; margin: 0; }
+
 /* ---------- theme panel ---------- */
 .panel {
   border: 1px solid var(--hairline); border-radius: 6px; padding: 1.25rem 1.5rem;

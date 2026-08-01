@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>since-clock — five shells, one engine</title>
-<meta name="description" content="A live reading of how long it has been since a fixed instant. Five shells, two hover modes, one JS file, one CSS file, no dependencies. Every frame is computed from the epoch, so no frame it paints is ever wrong.">
+<title>since-clock — an instrument you can take apart</title>
+<meta name="description" content="A live reading of how long it has been since a fixed instant. Five shells, nine motion effects, one JS file, one CSS file, no dependencies. Click the clock and configure it without it ever showing you a number that was not true.">
 <link rel="stylesheet" href="since-clock.css">
+<link rel="stylesheet" href="studio.css">
 <link rel="stylesheet" href="demo.css">
 </head>
 <body>
@@ -13,85 +14,93 @@
 <main>
   <header class="head">
     <p class="kicker">since-clock</p>
-    <h1>Five shells. One engine.</h1>
+    <h1>An instrument you can take apart.</h1>
     <p class="lede">
       One <code>.js</code> file, one <code>.css</code> file, no dependencies,
-      no build step. Every frame is <code>Date.now() - start</code> —
-      nothing is ever incremented, so no frame it paints is ever wrong.
-      The shells below are five different objects built on that one
-      computation, not five skins on one object.
+      no build step. Every frame is <code>Date.now() - start</code> — nothing
+      is ever incremented, so no frame it paints is ever wrong. Click the
+      clock below and rebuild it while it runs.
     </p>
   </header>
 
-  <section class="panel" id="theme-panel">
-    <div>
-      <label for="c-accent">--since-accent</label>
-      <input type="color" id="c-accent" value="#c81e3a">
-    </div>
-    <div>
-      <label for="c-size">--since-size</label>
-      <input type="range" id="c-size" min="0.8" max="2.4" step="0.05" value="1.3">
-    </div>
-    <div>
-      <label for="c-gap">--since-gap</label>
-      <input type="range" id="c-gap" min="0.1" max="1.2" step="0.05" value="0.35">
-    </div>
-    <div>
-      <label for="c-duration">--since-duration</label>
-      <input type="range" id="c-duration" min="80" max="900" step="10" value="300">
-    </div>
+  <section class="hero">
+    <time data-since="2026-05-27T18:40:53-07:00"
+          data-since-studio
+          data-since-shell="rail"
+          data-since-precision="flow"
+          data-since-hover="reveal"><span data-since-value>since 27 May 2026</span></time>
+    <p class="note hero__note">
+      Change the shell, the units, the colour, the epoch — mid-second, mid-drag,
+      as often as you like. It will not blink, restart, or show you a zero,
+      because there is no counter in here to reset. That is the entire argument
+      of this component, and the console exists mostly to let you try to break it.
+    </p>
   </section>
 
-  <section class="stage" id="stage">
-    <time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail"><span data-since-value>since 27 May 2026</span></time>
-    <time data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"><span data-since-value>since 27 May 2026</span></time>
-    <time data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"><span data-since-value>since 27 May 2026</span></time>
+  <section class="prose">
+    <h2>The idea</h2>
+    <pre><code>const elapsed = Date.now() - start;</code></pre>
+    <p>
+      A tally that animates is briefly wrong. Counting up from zero means every
+      frame before the last shows a figure that was never true, and a screenshot
+      caught mid-flight is a lie about a real number. This is the opposite case,
+      and only because of how it is written: nothing is ever incremented and
+      nothing animates toward a value. There is no accumulator, so there is no
+      first frame showing zero, no drift, and no catch-up after the tab was
+      hidden. Miss a thousand frames and the next one is still exactly right.
+    </p>
+    <p>
+      Hide this tab for a while and come back. The reading is correct, and it
+      never had to work out what it missed.
+    </p>
   </section>
-  <p class="note">These three read the custom properties above live — drag a
-    control and every shell on this page redraws with the fallback tokens
-    they were built to take. No shell hardcodes a colour, a size or a
-    duration.</p>
+
+  <section class="prose">
+    <h2>Motion may dress a clock. It may never falsify one.</h2>
+    <p>
+      The nine effects in the console are adapted from
+      <a href="https://github.com/khushinpatel1/motion-kit">motion-kit</a>, and
+      the adaptation had a rule to obey. <code>shimmer-text</code> is allowed on
+      the numerals: it changes their colour and not their content.
+      <code>text-scramble-hover</code> is not, because a clock cycling random
+      glyphs is a clock displaying readings that were never true — the one thing
+      this component exists to never do. It dresses the console's own headings
+      instead, which are words rather than measurements. Hover one.
+    </p>
+    <p>
+      The same test decided the rest. Effects that touch the reading have to
+      leave it true; effects that dress the plate, the ring or the panel are
+      unrestricted.
+    </p>
+  </section>
 
   <section class="shell-demo">
-    <h2>bare</h2>
-    <p class="note">Plain typeset text, no chrome. What you get with no
-      attributes but <code>data-since</code> itself.</p>
+    <h2>The five shells</h2>
+    <p class="note">Five different objects built on one computation, not five
+      skins on one object. Each reads the same <code>now - start</code>.</p>
     <div class="shell-demo__grid">
       <div class="shell-demo__variant">
-        <p class="tag">default</p>
+        <p class="tag">bare — plain typeset text, the default</p>
         <p class="reading"><time data-since="2026-05-27T18:40:53-07:00"><span data-since-value>since 27 May 2026</span></time></p>
       </div>
       <div class="shell-demo__variant">
-        <p class="tag">labels: short</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-labels="short"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">units: days,hours · labels: none</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-units="days,hours" data-since-labels="none"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-    </div>
-    <pre><code>&lt;time data-since="2026-05-27T18:40:53-07:00"&gt;
-  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
-&lt;/time&gt;</code></pre>
-  </section>
-
-  <section class="shell-demo">
-    <h2>rail</h2>
-    <p class="note">Mono text, a flowing-seconds wheel, an underline rail.
-      This is what khushin.com's masthead runs. Days/hours/minutes stay
-      typeset and still; only seconds are genuinely continuous, so only
-      seconds move.</p>
-    <div class="shell-demo__grid">
-      <div class="shell-demo__variant">
-        <p class="tag">default</p>
+        <p class="tag">rail — text, flowing seconds, an underline</p>
         <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail"><span data-since-value>since 27 May 2026</span></time></p>
       </div>
       <div class="shell-demo__variant">
-        <p class="tag">hover: reveal</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail" data-since-hover="reveal"><span data-since-value>since 27 May 2026</span></time></p>
+        <p class="tag">odometer — every unit its own wheel</p>
+        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="odometer"><span data-since-value>since 27 May 2026</span></time></p>
       </div>
       <div class="shell-demo__variant">
-        <p class="tag">hover: scrub — drag it</p>
+        <p class="tag">dial — one ring, seconds as a continuous arc</p>
+        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"><span data-since-value>since 27 May 2026</span></time></p>
+      </div>
+      <div class="shell-demo__variant">
+        <p class="tag">strata — stacked proportional bars</p>
+        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"><span data-since-value>since 27 May 2026</span></time></p>
+      </div>
+      <div class="shell-demo__variant">
+        <p class="tag">hover: scrub — drag through its own history</p>
         <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail" data-since-hover="scrub"><span data-since-value>since 27 May 2026</span></time></p>
       </div>
     </div>
@@ -99,58 +108,12 @@
       data-since-shell="rail" data-since-hover="scrub"&gt;
   &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
 &lt;/time&gt;</code></pre>
-    <p class="note"><code>data-since-flow</code> still works, forever — it
-      renders exactly this shell, because this is the rendering it always
-      produced. It is the old spelling of <code>data-since-precision="flow"</code>,
-      not a deprecated attribute.</p>
-  </section>
-
-  <section class="shell-demo">
-    <h2>odometer</h2>
-    <p class="note">Every configured unit is its own wheel. Days, hours and
-      minutes step when their value changes; seconds flow continuously —
-      the one people will screenshot.</p>
-    <div class="shell-demo__grid">
-      <div class="shell-demo__variant">
-        <p class="tag">default</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="odometer"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-    </div>
-    <pre><code>&lt;time data-since="2026-05-27T18:40:53-07:00" data-since-shell="odometer"&gt;
-  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
-&lt;/time&gt;</code></pre>
-  </section>
-
-  <section class="shell-demo">
-    <h2>dial</h2>
-    <p class="note">One ring, seconds sweeping as a continuous arc, numerals
-      typeset inside. The only circular shape in the set, and the most
-      <em>clock</em> of the five.</p>
-    <div class="shell-demo__grid">
-      <div class="shell-demo__variant">
-        <p class="tag">default</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-    </div>
-    <pre><code>&lt;time data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"&gt;
-  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
-&lt;/time&gt;</code></pre>
-  </section>
-
-  <section class="shell-demo">
-    <h2>strata</h2>
-    <p class="note">Elapsed time as stacked proportional bars, each unit a
-      fraction of the one above it. Reads as a chart, not a clock — this
-      studio's own idiom.</p>
-    <div class="shell-demo__grid">
-      <div class="shell-demo__variant">
-        <p class="tag">default</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-    </div>
-    <pre><code>&lt;time data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"&gt;
-  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
-&lt;/time&gt;</code></pre>
+    <p class="note"><strong>Scrub is the engine's own idea, one level up.</strong>
+      Flow mode reads a fractional second nobody asked for; scrub reads a
+      fractional day <em>you</em> pick. Both exist because the engine was never
+      "the time since start, ticking" — it was always "the time between start
+      and any instant," and the instant only had to stop being hardcoded to
+      <code>now</code>. A <code>setInterval</code> clock can do neither.</p>
   </section>
 
   <section class="demo">
@@ -159,7 +122,9 @@
       <time data-since="1969-07-20T20:17:40Z" data-since-format="compact"><span data-since-value>since 20 July 1969</span></time>
     </p>
     <p class="note">Since Apollo 11 touched down. Nineteen thousand days is
-      still the honest number — see <em>Units</em> in the README.</p>
+      still the honest number — see <em>Units</em> in the README. Every
+      pre-shell attribute still works, because a published component does not
+      get to strand a stranger's markup.</p>
   </section>
 
   <section class="demo demo--broken">
@@ -172,45 +137,21 @@
   </section>
 
   <section class="prose">
-    <h2>The idea</h2>
-    <pre><code>const elapsed = Date.now() - start;</code></pre>
+    <h2>What the console is not</h2>
     <p>
-      Nothing is ever incremented and nothing animates toward a value. There is
-      no accumulator, so there is no first frame showing zero, no drift, and no
-      catch-up after the tab was hidden. Miss a thousand frames and the next one
-      is still exactly right.
-    </p>
-    <p>
-      <strong>Scrub</strong> is the same idea one level up. Flow mode reads a
-      fractional second nobody asked for and holds the wheel there; scrub reads
-      a fractional day <em>you</em> pick, by dragging across the element, and
-      shows the elapsed time as of that instant. Both exist because the engine
-      was never "the time since start, ticking" — it was always "the time
-      between start and any instant," and the instant only had to stop being
-      hardcoded to <code>now</code>. A <code>setInterval</code> clock cannot do
-      either, because it never knows more than the ticks it has counted.
-    </p>
-    <p>
-      Hide this tab for a while and come back. The reading is correct, and it
-      never had to work out what it missed.
+      It is not the component. <code>since-clock.js</code> and
+      <code>since-clock.css</code> are two files with no dependencies and no
+      build step, and nothing on this page is required to use them —
+      <code>studio.js</code> and <code>studio.css</code> are an optional layer
+      that one element opts into with <code>data-since-studio</code>. Copy the
+      markup the console gives you and you get exactly what you configured,
+      with none of this.
     </p>
     <p class="more"><a href="https://github.com/khushinpatel1/since-clock">Source and README →</a></p>
   </section>
 </main>
 
 <script src="since-clock.js" defer></script>
-<script>
-  const stage = document.getElementById('stage');
-  const bind = (id, prop, unit) => {
-    const input = document.getElementById(id);
-    const apply = () => stage.style.setProperty(prop, `${input.value}${unit}`);
-    input.addEventListener('input', apply);
-    apply();
-  };
-  bind('c-accent', '--since-accent', '');
-  bind('c-size', '--since-size', 'em');
-  bind('c-gap', '--since-gap', 'em');
-  bind('c-duration', '--since-duration', 'ms');
-</script>
+<script src="studio.js" defer></script>
 </body>
 </html>
