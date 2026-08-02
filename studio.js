@@ -98,19 +98,35 @@
     { name: 'cyan', accent: '#06b6d4', ink: '#ecfeff' },
     { name: 'violet', accent: '#7c3aed', ink: '#f5f3ff' },
     { name: 'amber', accent: '#f59e0b', ink: '#fffbeb' },
-    { name: 'paper', accent: '#111827', ink: '#111827' },
+    { name: 'paper', accent: '#111827', ink: '#f5f4f2' },
   ];
 
-  const defaults = (node) => ({
-    epoch: node.dataset.since,
-    shell: SHELLS.includes(node.dataset.sinceShell) ? node.dataset.sinceShell : 'rail',
-    units: UNITS.slice(),
-    precision: 'flow',
-    labels: 'long',
-    hover: 'reveal',
-    props: Object.fromEntries(PROPS.map((p) => [p.key, p.value])),
-    fx: new Set(['aurora', 'grain', 'spotlight']),
-  });
+  const defaults = (node) => {
+    const computed = getComputedStyle(node);
+    const readProp = (p) => {
+      const value = computed.getPropertyValue(p.prop).trim();
+      if (!value) return p.value;
+      if (p.type === 'range') {
+        const match = value.match(new RegExp(`^(-?(?:\\d+(?:\\.\\d+)?|\\.\\d+))${p.unit}$`));
+        return match ? Number(match[1]) : p.value;
+      }
+      return value;
+    };
+    const units = node.dataset.sinceUnits
+      ? node.dataset.sinceUnits.split(',').map((u) => u.trim()).filter((u) => UNITS.includes(u))
+      : UNITS.slice();
+
+    return {
+      epoch: node.dataset.since,
+      shell: SHELLS.includes(node.dataset.sinceShell) ? node.dataset.sinceShell : 'rail',
+      units: units.length ? units : UNITS.slice(),
+      precision: PRECISION.includes(node.dataset.sincePrecision) ? node.dataset.sincePrecision : 'flow',
+      labels: LABELS.includes(node.dataset.sinceLabels) ? node.dataset.sinceLabels : 'long',
+      hover: HOVER.includes(node.dataset.sinceHover) ? node.dataset.sinceHover : 'none',
+      props: Object.fromEntries(PROPS.map((p) => [p.key, readProp(p)])),
+      fx: new Set(['aurora', 'grain', 'spotlight']),
+    };
+  };
 
   // ---- permalink ----------------------------------------------------------
 
@@ -237,6 +253,7 @@
     // ---- the console -----------------------------------------------------
 
     let scrim = null, panel = null, stage = null, consoleEl = null, open = false;
+    let focusables = [];
     let chipRenderers = [];
     let syncInputs = () => {};
     const renderChips = () => chipRenderers.forEach((f) => f());
@@ -536,6 +553,9 @@
 
       scrim = el('div', 'studio-scrim');
       consoleEl = el('div', 'studio-console');
+      consoleEl.setAttribute('role', 'dialog');
+      consoleEl.setAttribute('aria-modal', 'true');
+      consoleEl.setAttribute('aria-label', 'Configure this clock');
       stage = el('div', 'studio-stage');
       const close = el('button', 'studio-close', 'close');
       close.type = 'button';
@@ -546,6 +566,7 @@
       consoleEl.appendChild(close);
       document.body.appendChild(scrim);
       document.body.appendChild(consoleEl);
+      focusables = [...consoleEl.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])')];
 
       // Hold the seat's footprint so the page behind does not reflow twice.
       seat.style.minWidth = `${first.width}px`;
@@ -580,6 +601,7 @@
       scrim.classList.remove('is-open');
       const dead = [scrim, consoleEl];
       scrim = consoleEl = panel = stage = null;
+      focusables = [];
       out = link = null;
       chipRenderers = [];
       setTimeout(() => dead.forEach((n) => n && n.remove()), stilled() ? 0 : 300);
@@ -588,6 +610,14 @@
 
     const onKey = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); closeConsole(); }
+      if (e.key !== 'Tab' || !focusables.length || !consoleEl) return;
+      const current = document.activeElement;
+      const index = focusables.indexOf(current);
+      const atBoundary = index < 0 || !consoleEl.contains(current)
+        || (e.shiftKey ? index <= 0 : index === focusables.length - 1);
+      if (!atBoundary) return;
+      e.preventDefault();
+      focusables[e.shiftKey ? focusables.length - 1 : 0].focus();
     };
 
     seat.addEventListener('click', (e) => {

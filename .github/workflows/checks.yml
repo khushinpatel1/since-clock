@@ -43,3 +43,15 @@ jobs:
           node-version: 22
       # doc-gc.mjs is dependency-free by design, so there is no install step.
       - run: node scripts/doc-gc.mjs . --check
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          node -c since-clock.js
+          node -c studio.js
+      - run: node scripts/smoke-test.mjs

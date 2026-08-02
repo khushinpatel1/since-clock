@@ -448,11 +448,22 @@
   const SCRUB_STEP = MS.hour;
   const SCRUB_STEP_FINE = MS.day;
 
+  const scrubText = (clock, elapsed) => joinUnits(parts(elapsed), effectiveUnits(clock), 'long');
+
   const announce = (clock, elapsed) => {
     if (!clock.dom.scrubSr) return;
-    clock.dom.scrubSr.textContent = joinUnits(parts(elapsed), effectiveUnits(clock), 'long');
+    clock.dom.scrubSr.textContent = scrubText(clock, elapsed);
     clock.dom.scrubSr.setAttribute('aria-live', 'polite');
     setTimeout(() => clock.dom.scrubSr.setAttribute('aria-live', 'off'), 1000);
+  };
+
+  const updateScrubAria = (clock, elapsed, now = Date.now() - clock.start) => {
+    if (clock.hover !== 'scrub') return;
+    const node = clock.node;
+    node.setAttribute('aria-valuemin', '0');
+    node.setAttribute('aria-valuemax', String(Math.max(0, now)));
+    node.setAttribute('aria-valuenow', String(Math.max(0, elapsed)));
+    node.setAttribute('aria-valuetext', scrubText(clock, elapsed));
   };
 
   // Behaviours are wired once per node and read clock.hover at event time,
@@ -466,9 +477,15 @@
       node.tabIndex = 0;
       node.setAttribute('role', 'slider');
       node.setAttribute('aria-label', 'Scrub elapsed time');
+      const now = Math.max(0, Date.now() - clock.start);
+      updateScrubAria(clock, clock.scrubElapsed != null ? clock.scrubElapsed : now, now);
     } else {
       node.removeAttribute('role');
       node.removeAttribute('aria-label');
+      node.removeAttribute('aria-valuemin');
+      node.removeAttribute('aria-valuemax');
+      node.removeAttribute('aria-valuenow');
+      node.removeAttribute('aria-valuetext');
       if (node.tabIndex === 0 && !node.hasAttribute('tabindex')) node.tabIndex = -1;
       node.removeAttribute('tabindex');
     }
@@ -657,6 +674,7 @@
   const paint = (clock) => {
     if (!clock.dom) { initClock(clock); mount(clock); }
     const elapsed = clock.scrubElapsed != null ? clock.scrubElapsed : Date.now() - clock.start;
+    updateScrubAria(clock, elapsed);
 
     RENDER[clock.shell](clock, elapsed);
 
