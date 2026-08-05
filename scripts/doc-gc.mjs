@@ -112,7 +112,16 @@ let studioCorpus = null;
 const crossRepoReferrer = (repo, file) => {
   if (studioCorpus === null) {
     studioCorpus = [];
-    for (const entry of fs.readdirSync(STUDIO)) {
+    // STUDIO is a Mac-only path (this Mac's checkout root) — CI runners don't
+    // have it. Cross-repo referrer detection is a local-only enrichment, not
+    // a hard requirement; skip it rather than crash the whole check.
+    let entries;
+    try {
+      entries = fs.readdirSync(STUDIO);
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
       if (entry.startsWith('.')) continue;
       const dir = path.join(STUDIO, entry);
       try {
