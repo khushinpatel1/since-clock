@@ -39,11 +39,21 @@ import { execFileSync } from 'node:child_process';
 const STUDIO = '/Users/khushinpatel/Dev';
 const STALE_DAYS = 45;
 
+// CLAUDE.md says "keep it about a page and keep it true" — a prose rule that
+// drifted for a month because nothing enforced it (khushin's NORTH.md reached
+// 9,986 words). This is the enforcement: NORTH.md specifically, not any other
+// permanent file, gets a hard word cap in --check.
+const NORTH_WORD_CAP = 1200;
+
 // Files that carry standing by their name alone. NORTH is the repo's truth,
 // AGENTS/CLAUDE point at it, README and CHANGELOG are for humans arriving cold.
 const PERMANENT = new Set(['NORTH.md', 'README.md', 'CHANGELOG.md', 'CLAUDE.md', 'AGENTS.md', 'LICENSE.md']);
 
-const SKIP = /(^|\/)(node_modules|\.venv|vendor|build|dist|out|target|DerivedData|playwright-report|\.transcripts)(\/|$)/;
+// `www` is a published web root, not a doc tree: its markdown is product copy
+// compiled into HTML by a site build, so it is source in the same sense a .ts
+// file is. Scanning it reports every legal page and doc page as an orphan
+// steering doc, which is the wrong category entirely.
+const SKIP = /(^|\/)(node_modules|\.venv|vendor|build|dist|out|target|www|DerivedData|playwright-report|\.transcripts)(\/|$)/;
 
 // Loaded by convention rather than by reference — Claude Code reads these by
 // their location, so nothing in the repo ever links to them.
@@ -57,6 +67,16 @@ const CONVENTION = /(^|\/)\.claude\/(commands|agents|skills|hooks)\//;
 // Permanence has to be claimed deliberately, in the file, by someone who
 // decided it. That is the whole difference between a reference and a corpse.
 const STANDING = /<!--\s*doc-gc:\s*standing\s*-->/i;
+
+// The word cap has the same one opt-out, on the same theory: a NORTH.md that
+// is genuinely dense reference (a parser reachability map, a trap catalogue)
+// rather than narrative bloat can say so, deliberately, in its own text:
+//
+//     <!-- doc-gc: north-cap-exempt: <one-line reason> -->
+//
+// Silently exceeding the cap is what this check exists to prevent; an
+// undeclared exemption is not an exemption.
+const CAP_EXEMPT = /<!--\s*doc-gc:\s*north-cap-exempt:\s*(.+?)\s*-->/i;
 
 // A doc announcing its own completion. These are the expensive ones: they read
 // as authority, and the line saying they're closed is usually four paragraphs
@@ -214,9 +234,12 @@ function analyse(repo) {
       const age = lastTouched ? daysSince(lastTouched) : 0;
       const permanent = PERMANENT.has(path.basename(file)) || STANDING.test(body);
       const finished = !permanent && FINISHED_MARKERS.some((re) => re.test(head));
+      const words = body.split(/\s+/).filter(Boolean).length;
+      const oversized = path.basename(file) === 'NORTH.md' && words > NORTH_WORD_CAP && !CAP_EXEMPT.test(body);
 
       let verdict;
-      if (permanent) verdict = 'PERMANENT';
+      if (oversized) verdict = 'OVERSIZED';
+      else if (permanent) verdict = 'PERMANENT';
       else if (!live.has(file)) verdict = 'ORPHAN';
       else if (finished) verdict = 'FINISHED';
       else if (age > STALE_DAYS) verdict = 'STALE';
@@ -227,7 +250,7 @@ function analyse(repo) {
         verdict,
         lastTouched,
         age,
-        words: body.split(/\s+/).filter(Boolean).length,
+        words,
         via: referrers.get(file) ?? null,
       };
     })
@@ -238,6 +261,7 @@ const REASON = {
   ORPHAN: 'nothing alive points at it — it steers sessions without standing',
   FINISHED: 'says it is complete/superseded in its own header',
   STALE: `untouched ${STALE_DAYS}+ days while claiming to be live work`,
+  OVERSIZED: `over the ${NORTH_WORD_CAP}-word NORTH.md cap — fold dated narrative into git history, keep only what is/how/laws/in-flight`,
 };
 
 function report(repo, rows) {
@@ -251,9 +275,9 @@ function report(repo, rows) {
     : '';
 
   console.log(`\n── ${name} — ${rows.length} tracked docs · ` +
-    ['ORPHAN', 'FINISHED', 'STALE'].map((k) => `${counts[k] ?? 0} ${k.toLowerCase()}`).join(' · ') + drift);
+    ['ORPHAN', 'FINISHED', 'STALE', 'OVERSIZED'].map((k) => `${counts[k] ?? 0} ${k.toLowerCase()}`).join(' · ') + drift);
 
-  for (const group of ['ORPHAN', 'FINISHED', 'STALE']) {
+  for (const group of ['ORPHAN', 'FINISHED', 'STALE', 'OVERSIZED']) {
     const items = flagged.filter((r) => r.verdict === group);
     if (!items.length) continue;
     console.log(`\n  ${group} — ${REASON[group]}`);
