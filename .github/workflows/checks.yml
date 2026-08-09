@@ -1,7 +1,8 @@
 name: Checks
 
-# since-clock has no build, no dependencies and no test runner — the demo page
-# is the test, and that is a human check. So unlike every other repo in the
+# since-clock has no build or dependencies. The demo page is the human
+# interaction check, while the small deterministic scripts cover the engine.
+# So unlike every other repo in the
 # studio this one has a single workflow rather than the ci.yml/docs.yml pair:
 # there is nothing here for ci.yml to ignore, so there is no markdown gap for
 # docs.yml to close. One workflow on every push covers the repo completely.
@@ -55,3 +56,4 @@ jobs:
           node -c since-clock.js
           node -c studio.js
       - run: node scripts/smoke-test.mjs
+      - run: node scripts/time-test.mjs

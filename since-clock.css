@@ -211,3 +211,11 @@
   .since-wheel__strip, .since-dial__sweep, .since-strata__fill { transition: none; }
   .since-mount { animation: none; }
 }
+
+/* The component also accepts an explicit page-level stillness flag for hosts
+   that expose their own motion control. Keep CSS transitions honest with the
+   same choice the engine makes in JavaScript. */
+html[data-motion='reduced'] .since-dial__sweep,
+html[data-motion='reduced'] .since-strata__fill,
+html[data-motion='reduced'] .since-reveal { transition: none; }
+html[data-motion='reduced'] .since-mount { animation: none; }

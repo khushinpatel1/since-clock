@@ -4,10 +4,11 @@ import vm from 'node:vm';
 
 const files = ['since-clock.js', 'studio.js'];
 const context = {
-  document: { querySelectorAll() { return []; } },
+  document: { querySelectorAll() { return []; }, addEventListener() {} },
   matchMedia() { return { matches: false, addEventListener() {} }; },
   window: {},
   console,
+  addEventListener() {},
   setTimeout,
   clearTimeout,
 };

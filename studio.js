@@ -225,7 +225,7 @@
     };
 
     const markup = () => {
-      const attrs = [`data-since="${state.epoch}"`];
+      const attrs = [`datetime="${state.epoch}"`, `data-since="${state.epoch}"`];
       if (state.shell !== 'bare') attrs.push(`data-since-shell="${state.shell}"`);
       if (state.units.join(',') !== UNITS.join(',')) attrs.push(`data-since-units="${state.units.join(',')}"`);
       if (state.precision !== 'seconds') attrs.push(`data-since-precision="${state.precision}"`);
@@ -474,7 +474,7 @@
       eRow.appendChild(eInput);
       gEpoch.appendChild(eRow);
       gEpoch.appendChild(el('p', 'studio-note',
-        'Move it and the reading is correct in the next painted frame — there is no counter to reset, because there was never a counter. Set it in the future and the clock reads zero rather than going negative.'));
+        'Move it and the reading is correct in the next painted frame — there is no counter to reset, because there was never a counter. Set it in the future and the authored fallback stays until the instant passes.'));
       p.appendChild(gEpoch);
 
       // output — the payload

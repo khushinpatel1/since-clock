@@ -65,9 +65,6 @@
    ========================================================================== */
 
 (() => {
-  const nodes = document.querySelectorAll('[data-since]');
-  if (!nodes.length) return;
-
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   /* data-motion on <html> is the host page's say over the OS setting, in both
@@ -177,10 +174,18 @@
     return { shell, units, precision, labels, hover };
   };
 
-  // The units actually rendered, once precision has had its say. "minutes"
-  // precision drops seconds outright; "seconds"/"flow" keep them.
-  const effectiveUnits = (clock) =>
-    clock.precision === 'minutes' ? clock.units.filter((u) => u !== 'seconds') : clock.units;
+  // The units actually rendered, once precision and motion preference have
+  // had their say. "minutes" precision and reduced motion drop seconds.
+  const effectiveUnits = (clock) => {
+    // Reduced motion is still a live clock, but it does not leave a stale
+    // seconds reading on screen while the scheduler is intentionally asleep
+    // between minute boundaries. A seconds-only configuration gets the
+    // smallest honest replacement rather than an empty clock.
+    const units = clock.precision === 'minutes' || motionReduced()
+      ? clock.units.filter((u) => u !== 'seconds')
+      : clock.units;
+    return units.length ? units : ['minutes'];
+  };
 
   // Continuous shells (rail/odometer/dial/strata) are continuous by default —
   // the wheel/sweep/fill is what the shell IS, not an opt-in. Only "minutes"
@@ -207,13 +212,21 @@
     const start = Date.parse(node.dataset.since);
     // An unparseable epoch leaves the server-rendered fallback exactly as it
     // is. A clock that cannot tell the time should say nothing, not "NaN".
-    if (!Number.isFinite(start)) return null;
+    // A future epoch is valid syntax but not a "since" reading; leave that
+    // fallback intact too rather than showing a misleading zero.
+    if (!Number.isFinite(start) || start > Date.now()) return null;
 
+    const target = node.querySelector('[data-since-value]') || node;
     const clock = {
-      node, target: node.querySelector('[data-since-value]') || node, start,
+      node, target, fallbackHTML: target.innerHTML, start,
       ...parseConfig(node),
       last: null, lastTick: null, minuteBoundary: null, mounted: false,
       scrubElapsed: null, revealTimer: 0, dom: null, visible: true,
+      ownsTabIndex: false,
+      hostInteractionAttrs: Object.fromEntries([
+        'role', 'aria-label', 'aria-valuemin', 'aria-valuemax',
+        'aria-valuenow', 'aria-valuetext',
+      ].map((name) => [name, node.getAttribute(name)])),
     };
     clocks.push(clock);
     node.dataset.sinceLive = 'on';
@@ -221,9 +234,7 @@
     return clock;
   };
 
-  for (const node of nodes) register(node);
-
-  if (!clocks.length) return;
+  for (const node of document.querySelectorAll('[data-since]')) register(node);
 
   // ---- shared DOM builders -------------------------------------------
 
@@ -324,6 +335,7 @@
       root.appendChild(wheel);
       const sr = srNode('since__sr');
       root.appendChild(sr);
+      text.setAttribute('aria-hidden', 'true');
       wheelRefs = { wheel, strip, sr };
     }
     const beat = buildBeatMark();
@@ -336,7 +348,11 @@
     const units = effectiveUnits(clock);
     const cols = {};
     units.forEach((u, i) => {
-      if (i > 0) root.appendChild(el('span', 'since__sep'));
+      if (i > 0) {
+        const separator = el('span', 'since__sep');
+        separator.setAttribute('aria-hidden', 'true');
+        root.appendChild(separator);
+      }
       if (u === 'seconds' && isContinuous(clock)) {
         const { wheel, strip } = buildWheel();
         wheel.classList.add('since-wheel--odometer');
@@ -344,6 +360,7 @@
         cols[u] = { flow: true, strip };
       } else {
         const col = buildStepColumn();
+        col.setAttribute('aria-hidden', 'true');
         root.appendChild(col);
         cols[u] = { flow: false, col };
       }
@@ -392,6 +409,7 @@
     // (usually days) has nothing above it and is typeset in the head instead.
     for (const u of units.slice(1)) {
       const row = el('span', 'since-strata__row');
+      row.setAttribute('aria-hidden', 'true');
       const label = el('span', 'since-strata__label');
       label.textContent = SHORT[u];
       const track = el('span', 'since-strata__track');
@@ -466,6 +484,18 @@
     node.setAttribute('aria-valuetext', scrubText(clock, elapsed));
   };
 
+  const restoreHostInteraction = (clock) => {
+    const node = clock.node;
+    for (const [name, value] of Object.entries(clock.hostInteractionAttrs)) {
+      if (value == null) node.removeAttribute(name);
+      else node.setAttribute(name, value);
+    }
+    if (clock.ownsTabIndex) {
+      node.removeAttribute('tabindex');
+      clock.ownsTabIndex = false;
+    }
+  };
+
   // Behaviours are wired once per node and read clock.hover at event time,
   // rather than being attached only for the mode configured at build. That is
   // what lets data-since-hover change on a live element: there is no listener
@@ -474,30 +504,31 @@
   const applyHoverRole = (clock) => {
     const node = clock.node;
     if (clock.hover === 'scrub') {
-      node.tabIndex = 0;
+      if (!node.hasAttribute('tabindex')) {
+        node.setAttribute('tabindex', '0');
+        clock.ownsTabIndex = true;
+      }
       node.setAttribute('role', 'slider');
       node.setAttribute('aria-label', 'Scrub elapsed time');
       const now = Math.max(0, Date.now() - clock.start);
       updateScrubAria(clock, clock.scrubElapsed != null ? clock.scrubElapsed : now, now);
     } else {
-      node.removeAttribute('role');
-      node.removeAttribute('aria-label');
-      node.removeAttribute('aria-valuemin');
-      node.removeAttribute('aria-valuemax');
-      node.removeAttribute('aria-valuenow');
-      node.removeAttribute('aria-valuetext');
-      if (node.tabIndex === 0 && !node.hasAttribute('tabindex')) node.tabIndex = -1;
-      node.removeAttribute('tabindex');
+      restoreHostInteraction(clock);
     }
   };
 
   const wireBehaviors = (clock) => {
     const node = clock.node;
+    const listeners = [];
+    const listen = (type, handler, options) => {
+      node.addEventListener(type, handler, options);
+      listeners.push([type, handler, options]);
+    };
 
-    node.addEventListener('mouseenter', () => { if (clock.hover === 'reveal') startReveal(clock); });
-    node.addEventListener('mouseleave', () => { if (clock.hover === 'reveal') stopReveal(clock); });
-    node.addEventListener('focusin', () => { if (clock.hover === 'reveal') startReveal(clock); });
-    node.addEventListener('focusout', () => { if (clock.hover === 'reveal') stopReveal(clock); });
+    listen('mouseenter', () => { if (clock.hover === 'reveal') startReveal(clock); });
+    listen('mouseleave', () => { if (clock.hover === 'reveal') stopReveal(clock); });
+    listen('focusin', () => { if (clock.hover === 'reveal') startReveal(clock); });
+    listen('focusout', () => { if (clock.hover === 'reveal') stopReveal(clock); });
 
     const scrubTo = (elapsed) => {
       clock.scrubElapsed = Math.max(0, Math.min(Date.now() - clock.start, elapsed));
@@ -526,12 +557,12 @@
       return frac * (Date.now() - clock.start);
     };
 
-    node.addEventListener('pointerdown', (e) => {
+    listen('pointerdown', (e) => {
       if (clock.hover !== 'scrub') return;
       armed = true;
       originX = e.clientX;
     });
-    node.addEventListener('pointermove', (e) => {
+    listen('pointermove', (e) => {
       if (!armed) return;
       if (!dragging) {
         if (Math.abs(e.clientX - originX) < TAP_SLOP) return;
@@ -542,10 +573,10 @@
       scrubTo(at(e.clientX));
     });
     const endDrag = () => { armed = false; dragging = false; release(); };
-    node.addEventListener('pointerup', endDrag);
-    node.addEventListener('pointercancel', endDrag);
+    listen('pointerup', endDrag);
+    listen('pointercancel', endDrag);
 
-    node.addEventListener('keydown', (e) => {
+    listen('keydown', (e) => {
       if (clock.hover !== 'scrub') return;
       const now = Date.now() - clock.start;
       const base = clock.scrubElapsed != null ? clock.scrubElapsed : now;
@@ -562,18 +593,22 @@
         e.preventDefault();
       }
     });
-    node.addEventListener('blur', release);
+    listen('blur', release);
+    return () => listeners.forEach(([type, handler, options]) => node.removeEventListener(type, handler, options));
+  };
+
+  const deactivate = (clock) => {
+    stopReveal(clock);
+    restoreHostInteraction(clock);
+    clock.behaviorsCleanup?.();
+    if (io) io.unobserve(clock.node);
+    clock.target.innerHTML = clock.fallbackHTML;
+    clock.node.removeAttribute('data-since-live');
+    const index = clocks.indexOf(clock);
+    if (index >= 0) clocks.splice(index, 1);
   };
 
   // ---- mount / init -------------------------------------------------------
-
-  // Shells whose seconds column is a structurally different element (a wheel)
-  // depending on whether motion is currently allowed — these need their DOM
-  // rebuilt on a live prefers-reduced-motion change. dial/strata read
-  // isContinuous() per frame instead of building different DOM, so they never
-  // need this; rail/odometer bake the choice into buildWheel() vs a step
-  // column at build time.
-  const WHEEL_SHELLS = new Set(['rail', 'odometer']);
 
   const initClock = (clock) => {
     stopReveal(clock);
@@ -590,9 +625,10 @@
     clock.last = null;
     clock.target.textContent = '';
     clock.target.appendChild(clock.dom.root);
-    if (clock.behaviorsWired) return;
-    clock.behaviorsWired = true;
-    wireBehaviors(clock);
+    if (!clock.behaviorsWired) {
+      clock.behaviorsWired = true;
+      clock.behaviorsCleanup = wireBehaviors(clock);
+    }
   };
 
   // Numerals rise into place from a mask, once, on first real paint. Never
@@ -698,28 +734,33 @@
 
   const anyContinuous = () => live.some((clock) => isContinuous(clock));
 
-  const scheduleReduced = () => {
+  const scheduleCoarse = () => {
     clearTimeout(reducedTimer);
     if (document.hidden || !live.length) return;
     const now = Date.now();
-    const untilNextMinute = Math.min(...live.map((clock) => {
+    const interval = !motionReduced() && live.some((clock) =>
+      !isContinuous(clock) && effectiveUnits(clock).includes('seconds'))
+      ? MS.second
+      : MS.minute;
+    const untilNextBoundary = Math.min(...live.map((clock) => {
       const elapsed = Math.max(0, now - clock.start);
-      return MS.minute - (elapsed % MS.minute);
+      return interval - (elapsed % interval);
     }));
     reducedTimer = setTimeout(() => {
       for (const clock of live) paint(clock);
-      scheduleReduced();
-    }, Math.max(50, untilNextMinute + 16));
+      scheduleCoarse();
+    }, Math.max(50, untilNextBoundary + 16));
   };
 
   const frame = () => {
     if (document.hidden || !live.length) { running = false; return; }
     for (const clock of live) paint(clock);
     if (!anyContinuous()) {
-      // Nothing on screen needs a frame more often than once a second/minute;
-      // fall back to a coarse timer so an all-bare page costs nothing idle.
+      // Text-only clocks do not need a frame loop, but a seconds reading still
+      // needs a one-second boundary. Reduced motion and minute precision use
+      // the quieter minute cadence instead.
       running = false;
-      scheduleReduced();
+      scheduleCoarse();
       return;
     }
     requestAnimationFrame(frame);
@@ -757,16 +798,13 @@
     else wake();
   });
   const motionChanged = () => {
-    for (const clock of clocks) {
+    for (const clock of clocks.slice()) {
       clock.last = null;
       clock.lastTick = null;
-      // rail/odometer build a structurally different DOM (a wheel vs a step
-      // column) depending on whether motion is currently allowed. Rebuild
-      // explicitly here, on the event that actually changed the answer,
-      // rather than diffing it inside the per-frame paint — a wheel spinning
-      // in front of someone who just asked for stillness is the one failure
-      // this file exists to prevent.
-      if (clock.dom && WHEEL_SHELLS.has(clock.shell)) initClock(clock);
+      // Reduced motion changes both the rendering cadence and the units that
+      // may be shown. Rebuild explicitly on the event that changed the
+      // answer, rather than diffing structure inside the per-frame paint.
+      if (clock.dom) initClock(clock);
     }
     wake();
   };
@@ -797,7 +835,7 @@
   const refresh = () => {
     for (const node of document.querySelectorAll('[data-since]')) register(node);
 
-    for (const clock of clocks) {
+    for (const clock of clocks.slice()) {
       const next = parseConfig(clock.node);
       let changed = CONFIG_KEYS.some((k) => clock[k] !== next[k])
         || next.units.join() !== clock.units.join();
@@ -806,6 +844,10 @@
       // that legitimately resets the beat: there is no longer any relationship
       // between the minute boundary just crossed and the one coming.
       const start = Date.parse(clock.node.dataset.since);
+      if (!Number.isFinite(start) || start > Date.now()) {
+        deactivate(clock);
+        continue;
+      }
       if (Number.isFinite(start) && start !== clock.start) {
         clock.start = start;
         clock.minuteBoundary = null;
@@ -829,5 +871,5 @@
   // Paint once immediately, so the upgrade from the static fallback happens in
   // the first frame rather than up to a second later.
   for (const clock of clocks) paint(clock);
-  wake();
+  if (clocks.length) wake();
 })();

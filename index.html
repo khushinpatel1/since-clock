@@ -3,152 +3,186 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>since-clock — an instrument you can take apart</title>
-<meta name="description" content="A live reading of how long it has been since a fixed instant. Five shells, nine motion effects, one JS file, one CSS file, no dependencies. Click the clock and configure it without it ever showing you a number that was not true.">
+<meta name="theme-color" content="#111315">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="since-clock — make time legible">
+<meta property="og:description" content="A tiny, truthful elapsed-time component. Two files, no dependencies, and every reading computed from its epoch.">
+<meta property="og:url" content="https://github.com/khushinpatel1/since-clock">
+<meta name="twitter:card" content="summary">
+<title>since-clock — make time legible</title>
+<meta name="description" content="A tiny, truthful elapsed-time component for pages that need to show how long something has been going. Two files, no dependencies, no build step.">
 <link rel="stylesheet" href="since-clock.css">
 <link rel="stylesheet" href="studio.css">
 <link rel="stylesheet" href="demo.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 
-<main>
-  <header class="head">
-    <p class="kicker">since-clock</p>
-    <h1>An instrument you can take apart.</h1>
-    <p class="lede">
-      One <code>.js</code> file, one <code>.css</code> file, no dependencies,
-      no build step. Every frame is <code>Date.now() - start</code> — nothing
-      is ever incremented, so no frame it paints is ever wrong. Click the
-      clock below and rebuild it while it runs.
-    </p>
-  </header>
+<header class="site-header">
+  <a class="brand" href="." aria-label="since-clock home">
+    <span class="brand__mark" aria-hidden="true"></span>
+    <span>since-clock</span>
+  </a>
+  <nav class="site-nav" aria-label="Primary">
+    <a href="#how-it-works">Why it works</a>
+    <a href="#quick-start">Quick start</a>
+    <a href="#explore">Explore</a>
+  </nav>
+</header>
 
-  <section class="hero">
-    <time data-since="2026-05-27T18:40:53-07:00"
-          data-since-studio
-          data-since-shell="rail"
-          data-since-precision="flow"
-          data-since-hover="reveal"><span data-since-value>since 27 May 2026</span></time>
-    <p class="note hero__note">
-      Change the shell, the units, the colour, the epoch — mid-second, mid-drag,
-      as often as you like. It will not blink, restart, or show you a zero,
-      because there is no counter in here to reset. That is the entire argument
-      of this component, and the console exists mostly to let you try to break it.
-    </p>
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__copy">
+      <p class="eyebrow">A live elapsed-time component</p>
+      <h1 id="hero-title">Make time legible.</h1>
+      <p class="hero__lede">
+        A calm, drop-in clock for showing how long something has been going —
+        without drift, fake animation, or a runtime to maintain.
+      </p>
+      <div class="hero__actions">
+        <a class="button" href="#quick-start">Add it to a page <span aria-hidden="true">↘</span></a>
+        <a class="button button--quiet" href="#explore">See the shells</a>
+      </div>
+      <p class="hero__microcopy">The number is recomputed from its epoch every time it paints.</p>
+    </div>
+
+    <div class="hero__instrument" aria-label="Live since-clock specimen">
+      <div class="instrument__topline">
+        <span class="eyebrow">Live specimen</span>
+        <span class="instrument__status"><span aria-hidden="true"></span> updating</span>
+      </div>
+      <time class="hero__clock"
+            datetime="2026-05-27T18:40:53-07:00"
+            data-since="2026-05-27T18:40:53-07:00"
+            data-since-studio
+            data-since-shell="rail"
+            data-since-precision="flow"
+            data-since-hover="reveal">
+        <span data-since-value>since 27 May 2026</span>
+      </time>
+      <p class="instrument__caption">Click the specimen to configure, theme, and copy its markup.</p>
+    </div>
   </section>
 
-  <section class="prose">
-    <h2>The idea</h2>
-    <pre><code>const elapsed = Date.now() - start;</code></pre>
-    <p>
-      A tally that animates is briefly wrong. Counting up from zero means every
-      frame before the last shows a figure that was never true, and a screenshot
-      caught mid-flight is a lie about a real number. This is the opposite case,
-      and only because of how it is written: nothing is ever incremented and
-      nothing animates toward a value. There is no accumulator, so there is no
-      first frame showing zero, no drift, and no catch-up after the tab was
-      hidden. Miss a thousand frames and the next one is still exactly right.
-    </p>
-    <p>
-      Hide this tab for a while and come back. The reading is correct, and it
-      never had to work out what it missed.
-    </p>
+  <section class="proof-strip" aria-label="Product facts">
+    <div><strong>2</strong><span>files to copy</span></div>
+    <div><strong>0</strong><span>dependencies</span></div>
+    <div><strong>1</strong><span>epoch behind every frame</span></div>
   </section>
 
-  <section class="prose">
-    <h2>Motion may dress a clock. It may never falsify one.</h2>
-    <p>
-      The nine effects in the console are adapted from
-      <a href="https://github.com/khushinpatel1/motion-kit">motion-kit</a>, and
-      the adaptation had a rule to obey. <code>shimmer-text</code> is allowed on
-      the numerals: it changes their colour and not their content.
-      <code>text-scramble-hover</code> is not, because a clock cycling random
-      glyphs is a clock displaying readings that were never true — the one thing
-      this component exists to never do. It dresses the console's own headings
-      instead, which are words rather than measurements. Hover one.
-    </p>
-    <p>
-      The same test decided the rest. Effects that touch the reading have to
-      leave it true; effects that dress the plate, the ring or the panel are
-      unrestricted.
-    </p>
+  <section id="how-it-works" class="section section--split" aria-labelledby="how-title">
+    <div class="section__intro">
+      <p class="eyebrow">The useful distinction</p>
+      <h2 id="how-title">A timer remembers. This clock measures.</h2>
+      <p>
+        Generic counters increment their last answer. That makes them drift,
+        start at zero, and lose their place when a tab sleeps. since-clock asks
+        the platform for the current time and subtracts the fixed epoch. A day
+        here is exactly 24 hours, not a calendar-day calculation.
+      </p>
+    </div>
+    <div class="equation" aria-label="Elapsed time equals current time minus start time">
+      <span>elapsed</span><b>=</b><span>now</span><b>−</b><span>start</span>
+      <small>the whole engine</small>
+    </div>
   </section>
 
-  <section class="shell-demo">
-    <h2>The five shells</h2>
-    <p class="note">Five different objects built on one computation, not five
-      skins on one object. Each reads the same <code>now - start</code>.</p>
-    <div class="shell-demo__grid">
-      <div class="shell-demo__variant">
-        <p class="tag">bare — plain typeset text, the default</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">rail — text, flowing seconds, an underline</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">odometer — every unit its own wheel</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="odometer"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">dial — one ring, seconds as a continuous arc</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">strata — stacked proportional bars</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"><span data-since-value>since 27 May 2026</span></time></p>
-      </div>
-      <div class="shell-demo__variant">
-        <p class="tag">hover: scrub — drag through its own history</p>
-        <p class="reading"><time data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail" data-since-hover="scrub"><span data-since-value>since 27 May 2026</span></time></p>
+  <section class="feature-grid" aria-label="What since-clock handles">
+    <article class="feature-card">
+      <span class="feature-card__number">01</span>
+      <h3>Correct after absence</h3>
+      <p>Hide the tab, return tomorrow, or cross a daylight-saving change. The next reading is calculated from the same instant.</p>
+    </article>
+    <article class="feature-card">
+      <span class="feature-card__number">02</span>
+      <h3>Quiet by default</h3>
+      <p>Tabular numerals prevent layout jitter. Reduced motion removes wheels and spatial transitions while keeping the reading live.</p>
+    </article>
+    <article class="feature-card">
+      <span class="feature-card__number">03</span>
+      <h3>Readable in the source</h3>
+      <p>Use semantic <code>&lt;time&gt;</code>, copy two files, and keep a truthful fallback in the markup for no-script and invalid-input cases.</p>
+    </article>
+  </section>
+
+  <section id="quick-start" class="section quick-start" aria-labelledby="quick-title">
+    <div class="section__intro">
+      <p class="eyebrow">Quick start</p>
+      <h2 id="quick-title">Useful in one copy-paste.</h2>
+      <p>Keep the fallback phrase human. The script upgrades it only when the epoch is parseable and already in the past.</p>
+    </div>
+    <div class="quick-start__code">
+      <pre><code>&lt;time datetime="2026-05-27T18:40:53-07:00"
+      data-since="2026-05-27T18:40:53-07:00"&gt;
+  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
+&lt;/time&gt;
+
+&lt;link rel="stylesheet" href="since-clock.css"&gt;
+&lt;script src="since-clock.js" defer&gt;&lt;/script&gt;</code></pre>
+      <div class="quick-start__aside">
+        <p class="eyebrow">The contract</p>
+        <p>Copy <code>since-clock.js</code> and <code>since-clock.css</code>. No package manager, build tool, account, or service is required.</p>
+        <a class="text-link" href="https://github.com/khushinpatel1/since-clock">Read the full API in the README <span aria-hidden="true">→</span></a>
       </div>
     </div>
-    <pre><code>&lt;time data-since="2026-05-27T18:40:53-07:00"
-      data-since-shell="rail" data-since-hover="scrub"&gt;
-  &lt;span data-since-value&gt;since 27 May 2026&lt;/span&gt;
-&lt;/time&gt;</code></pre>
-    <p class="note"><strong>Scrub is the engine's own idea, one level up.</strong>
-      Flow mode reads a fractional second nobody asked for; scrub reads a
-      fractional day <em>you</em> pick. Both exist because the engine was never
-      "the time since start, ticking" — it was always "the time between start
-      and any instant," and the instant only had to stop being hardcoded to
-      <code>now</code>. A <code>setInterval</code> clock can do neither.</p>
   </section>
 
-  <section class="demo">
-    <p class="label"><code>compact</code> (legacy <code>data-since-format</code>)</p>
-    <p class="reading">
-      <time data-since="1969-07-20T20:17:40Z" data-since-format="compact"><span data-since-value>since 20 July 1969</span></time>
-    </p>
-    <p class="note">Since Apollo 11 touched down. Nineteen thousand days is
-      still the honest number — see <em>Units</em> in the README. Every
-      pre-shell attribute still works, because a published component does not
-      get to strand a stranger's markup.</p>
+  <section id="explore" class="section explore" aria-labelledby="explore-title">
+    <div class="section__intro section__intro--wide">
+      <p class="eyebrow">One computation, five shells</p>
+      <h2 id="explore-title">Choose the surface that fits the moment.</h2>
+      <p>Plain text for a document. A rail for a masthead. A dial or strata when elapsed time deserves a little more shape. The value underneath never changes.</p>
+    </div>
+    <div class="shell-demo__grid">
+      <article class="shell-card shell-card--featured">
+        <p class="shell-card__tag">rail <span>flowing seconds</span></p>
+        <p class="reading"><time datetime="2026-05-27T18:40:53-07:00" data-since="2026-05-27T18:40:53-07:00" data-since-shell="rail"><span data-since-value>since 27 May 2026</span></time></p>
+      </article>
+      <article class="shell-card">
+        <p class="shell-card__tag">bare <span>plain text</span></p>
+        <p class="reading"><time datetime="2026-05-27T18:40:53-07:00" data-since="2026-05-27T18:40:53-07:00"><span data-since-value>since 27 May 2026</span></time></p>
+      </article>
+      <article class="shell-card">
+        <p class="shell-card__tag">odometer <span>stepped columns</span></p>
+        <p class="reading"><time datetime="2026-05-27T18:40:53-07:00" data-since="2026-05-27T18:40:53-07:00" data-since-shell="odometer"><span data-since-value>since 27 May 2026</span></time></p>
+      </article>
+      <article class="shell-card">
+        <p class="shell-card__tag">dial <span>one quiet sweep</span></p>
+        <p class="reading"><time datetime="2026-05-27T18:40:53-07:00" data-since="2026-05-27T18:40:53-07:00" data-since-shell="dial"><span data-since-value>since 27 May 2026</span></time></p>
+      </article>
+      <article class="shell-card">
+        <p class="shell-card__tag">strata <span>proportional bars</span></p>
+        <p class="reading"><time datetime="2026-05-27T18:40:53-07:00" data-since="2026-05-27T18:40:53-07:00" data-since-shell="strata"><span data-since-value>since 27 May 2026</span></time></p>
+      </article>
+    </div>
   </section>
 
-  <section class="demo demo--broken">
-    <p class="label">An unparseable epoch</p>
-    <p class="reading">
-      <time data-since="whenever"><span data-since-value>since some time in 2026</span></time>
-    </p>
-    <p class="note">Left completely alone, fallback intact, no underline. A
-      clock that cannot tell the time should say nothing, not <code>NaN</code>.</p>
+  <section class="examples" aria-labelledby="examples-title">
+    <div>
+      <p class="eyebrow">Built for real markup</p>
+      <h2 id="examples-title">Graceful at the edges.</h2>
+    </div>
+    <div class="example-row">
+      <div>
+        <p class="label">compact legacy format</p>
+        <p class="reading"><time datetime="1969-07-20T20:17:40Z" data-since="1969-07-20T20:17:40Z" data-since-format="compact"><span data-since-value>since 20 July 1969</span></time></p>
+      </div>
+      <p class="example-note">Old attributes keep working, so published markup does not become a migration project.</p>
+    </div>
+    <div class="example-row example-row--muted">
+      <div>
+        <p class="label">unparseable epoch</p>
+        <p class="reading"><time data-since="whenever"><span data-since-value>since some time in 2026</span></time></p>
+      </div>
+      <p class="example-note">The fallback stays exactly as authored. No <code>NaN</code>, no broken underline, no invented certainty.</p>
+    </div>
   </section>
 
-  <section class="prose">
-    <h2>What the console is not</h2>
-    <p>
-      It is not the component. <code>since-clock.js</code> and
-      <code>since-clock.css</code> are two files with no dependencies and no
-      build step, and nothing on this page is required to use them —
-      <code>studio.js</code> and <code>studio.css</code> are an optional layer
-      that one element opts into with <code>data-since-studio</code>. Copy the
-      markup the console gives you and you get exactly what you configured,
-      with none of this.
-    </p>
-    <p class="more"><a href="https://github.com/khushinpatel1/since-clock">Source and README →</a></p>
-  </section>
+  <footer class="site-footer">
+    <p><span class="brand__mark" aria-hidden="true"></span> since-clock is MIT-licensed and intentionally small.</p>
+    <a class="text-link" href="https://github.com/khushinpatel1/since-clock">Source, issues, and contribution notes <span aria-hidden="true">↗</span></a>
+  </footer>
 </main>
 
 <script src="since-clock.js" defer></script>

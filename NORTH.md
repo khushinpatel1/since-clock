@@ -14,12 +14,11 @@ has stopped being interesting.
 ## Run it / test it
 Open `index.html`. There is nothing to install and nothing to build.
 
-The demo page is the test: six configurations including a deliberately
-unparseable epoch, which must leave its fallback completely alone, and a
-`data-since-flow` example. Check in both themes, and with
-`prefers-reduced-motion` on — the plain clocks drop to minute resolution
-rather than stopping, and the flow clock drops the wheel entirely and falls
-back to the same minute-resolution text.
+The demo page is the test: five shells, legacy formats, an intentionally
+unparseable epoch that must leave its fallback completely alone, and a live
+configuration specimen. Check in both themes, and with
+`prefers-reduced-motion` on — every clock stays live at minute resolution,
+continuous chrome becomes still text, and scrub remains a direct user action.
 
 ## Flow mode, 2026-07-26
 
@@ -60,15 +59,14 @@ or duration. `data-since-flow` keeps working forever: it maps onto
 `precision="flow"` and, absent an explicit shell, onto `rail` — the exact
 rendering it always produced.
 
-**Budget held: 695 lines JS, 213 lines CSS**, against a 900/500 ceiling — still
-one file each, still zero dependencies, still no build step. `index.html` is
-now the specimen page rather than a test fixture: every shell, both hover
-modes, and a live panel that writes the custom properties so a visitor can
-theme the clock in the page.
+The engine and component CSS remain one readable file each, zero dependencies,
+and no build step. `index.html` is the public specimen: it explains the value
+before opening the optional console, gives a copy-paste install path, and
+shows every shell plus the legacy fallback behavior.
 
 **Continuous shells are continuous by default.** rail/odometer/dial/strata's
 wheel/sweep/fill is what the shell *is*, not an opt-in — `data-since-precision
-="seconds"` is how you keep a shell's chrome while asking it to tick
+="minutes"` is how you keep a shell's chrome while asking it to tick
 discretely instead. This took a live prefers-reduced-motion round-trip to get
 right: the DOM structural difference (wheel vs. step column) has to be
 rebuilt on the actual `khushin:motionchange`/`change` event, not diffed
@@ -80,13 +78,12 @@ Nothing is deployed. The repo is the artefact. `index.html` is a live demo if it
 is ever served, but it is not required to be.
 
 ## Checks
-`.github/workflows/checks.yml` runs `node scripts/doc-gc.mjs . --check` on every
-push and PR. One workflow, not the studio's usual `ci.yml`/`docs.yml` pair:
-there is no build and no test runner here, so `ci.yml` would have nothing to
-ignore and there is no markdown gap for a second workflow to close. It runs on
-`ubuntu-latest` rather than a `kp-mac-*` self-hosted runner because this repo is
-public — hosted minutes are free here, and a runner would tie a published,
-dependency-free repo to one Mac being awake. Added 2026-07-27.
+`.github/workflows/checks.yml` runs the documentation gate, syntax/smoke test,
+and deterministic time tests on every push and PR. One workflow, not the
+studio's usual `ci.yml`/`docs.yml` pair: there is no build or dependency install
+here. It runs on `ubuntu-latest` rather than a `kp-mac-*` self-hosted runner
+because this repo is public — hosted minutes are free here, and a runner would
+tie a published, dependency-free repo to one Mac being awake.
 
 ## In flight
 - **Published 2026-07-26**, MIT, at `khushinpatel1/since-clock`. KP's call, made
