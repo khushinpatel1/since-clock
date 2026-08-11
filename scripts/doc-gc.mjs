@@ -143,7 +143,26 @@ const crossRepoReferrer = (repo, file) => {
 };
 
 function analyse(repo) {
-  const tracked = git(repo, ['ls-files', '-z']).split('\0').filter(Boolean).filter((f) => !SKIP.test(f));
+  const nestedRepoPrefixes = fs.readdirSync(repo, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(repo, entry.name, '.git')))
+    .map((entry) => `${entry.name}/`);
+  // The index still lists a deleted file until the foreman commits it. A
+  // deleted path cannot steer a session, so analyse the working tree rather
+  // than reporting it as a zero-byte orphan during a no-git-write handoff.
+  const indexed = git(repo, ['ls-files', '-z']).split('\0').filter(Boolean);
+  // A tracked subproject with its own NORTH owns its own doctrine. Treat that
+  // directory as a project boundary when auditing the parent; auditing its
+  // internal docs as parent handoffs creates cross-project phantom findings.
+  const nestedProjectPrefixes = indexed
+    .filter((file) => file.endsWith('/NORTH.md'))
+    .map((file) => `${path.posix.dirname(file)}/`);
+  const tracked = indexed
+    .filter((f) => (
+      !SKIP.test(f)
+      && !nestedRepoPrefixes.some((prefix) => f.startsWith(prefix))
+      && !nestedProjectPrefixes.some((prefix) => f.startsWith(prefix))
+      && fs.existsSync(path.join(repo, f))
+    ));
   const docs = tracked.filter((f) => f.toLowerCase().endsWith('.md'));
   const source = tracked.filter((f) => !f.toLowerCase().endsWith('.md'));
 
@@ -397,9 +416,10 @@ if (flag('--map')) {
   for (const repo of [...studioRepos(), STUDIO]) {
     const rows = analyse(repo);
     const name = path.basename(repo);
+    const prefix = repo === STUDIO ? '' : `${name}/`;
     out.push(`## ${name}`, '');
     for (const r of rows) {
-      const link = `[[${name}/${r.file}|${r.file}]]`;
+      const link = `[[${prefix}${r.file}|${r.file}]]`;
       if (r.verdict === 'PERMANENT') out.push(`- **${link}** — permanent`);
       else if (r.verdict === 'LIVE') out.push(`- ${link} — alive via \`${r.via}\``);
       else {
