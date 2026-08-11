@@ -18,7 +18,7 @@ const read = () => {
 };
 let state = read();
 const painted = () => state.appearance === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : state.appearance;
-const persist = () => { try { localStorage.setItem(KEY, JSON.stringify({ ...state, mode: 'display' })); } catch {} };
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
 const writeHash = () => { const q = new URLSearchParams(location.hash.slice(1)); q.set('appearance', state.appearance); q.set('theme', state.palette); history.replaceState(null, '', `#${q}`); };
 const render = () => {
   toggle.setAttribute('aria-expanded', String(!menu.hidden));

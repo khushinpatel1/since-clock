@@ -10,3 +10,6 @@
 # no dependencies and no build step, and that is the point of it. If a
 # package.json ever appears, ask what it is buying first.
 node_modules/
+
+.crew/
+
