@@ -12,9 +12,25 @@
 <meta name="twitter:card" content="summary">
 <title>since-clock — make time legible</title>
 <meta name="description" content="A tiny, truthful elapsed-time component for pages that need to show how long something has been going. Two files, no dependencies, no build step.">
+<script>
+  (() => {
+    const key = 'since-clock.display';
+    const appearances = ['light', 'dark', 'system'];
+    const palettes = ['ember', 'signal', 'cyan', 'violet', 'amber', 'paper', 'neutral'];
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch {}
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const appearance = appearances.includes(hash.get('appearance')) ? hash.get('appearance') : appearances.includes(saved.appearance) ? saved.appearance : 'system';
+    const palette = palettes.includes(hash.get('theme')) ? hash.get('theme') : palettes.includes(saved.palette) ? saved.palette : 'neutral';
+    const painted = appearance === 'system' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : appearance === 'system' ? 'light' : appearance;
+    document.documentElement.dataset.appearance = painted;
+    document.documentElement.dataset.theme = palette;
+  })();
+</script>
 <link rel="stylesheet" href="since-clock.css">
 <link rel="stylesheet" href="studio.css">
 <link rel="stylesheet" href="demo.css">
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -29,6 +45,10 @@
     <a href="#quick-start">Quick start</a>
     <a href="#explore">Explore</a>
   </nav>
+  <div class="display-control">
+    <button class="display-toggle" type="button" aria-label="Display settings" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">◐</span><span class="display-toggle__label">display</span></button>
+    <div class="display-menu" role="menu" aria-label="Display settings" hidden></div>
+  </div>
 </header>
 
 <main id="main">
@@ -187,5 +207,6 @@
 
 <script src="since-clock.js" defer></script>
 <script src="studio.js" defer></script>
+<script src="theme.js" type="module"></script>
 </body>
 </html>

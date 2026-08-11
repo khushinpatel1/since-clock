@@ -31,6 +31,16 @@
 */
 
 (() => {
+  const PALETTES = [
+    { name: 'ember', accent: '#c81e3a', ink: '#f4f4f5' },
+    { name: 'signal', accent: '#22c55e', ink: '#ecfdf5' },
+    { name: 'cyan', accent: '#06b6d4', ink: '#ecfeff' },
+    { name: 'violet', accent: '#7c3aed', ink: '#f5f3ff' },
+    { name: 'amber', accent: '#f59e0b', ink: '#fffbeb' },
+    { name: 'paper', accent: '#111827', ink: '#f5f4f2' },
+    { name: 'neutral', accent: '#737373', ink: '#f5f5f5' },
+  ];
+  window.SinceStudioPalettes = PALETTES;
   const roots = document.querySelectorAll('[data-since-studio]');
   if (!roots.length) return;
 
@@ -90,15 +100,6 @@
     { key: 'gap', prop: '--since-gap', type: 'range', unit: 'em', min: 0, max: 1.2, step: 0.05, value: 0.35 },
     { key: 'radius', prop: '--since-radius', type: 'range', unit: 'em', min: 0, max: 1, step: 0.02, value: 0.2 },
     { key: 'duration', prop: '--since-duration', type: 'range', unit: 'ms', min: 0, max: 900, step: 10, value: 300 },
-  ];
-
-  const PALETTES = [
-    { name: 'ember', accent: '#c81e3a', ink: '#f4f4f5' },
-    { name: 'signal', accent: '#22c55e', ink: '#ecfdf5' },
-    { name: 'cyan', accent: '#06b6d4', ink: '#ecfeff' },
-    { name: 'violet', accent: '#7c3aed', ink: '#f5f3ff' },
-    { name: 'amber', accent: '#f59e0b', ink: '#fffbeb' },
-    { name: 'paper', accent: '#111827', ink: '#f5f4f2' },
   ];
 
   const defaults = (node) => {
@@ -244,7 +245,9 @@
       applyProps();
       applyFx();
       if (out) out.textContent = markup();
-      const q = encode(state);
+      const q = new URLSearchParams(encode(state));
+      const display = new URLSearchParams(location.hash.replace(/^#/, ''));
+      for (const key of ['appearance', 'theme']) if (display.has(key)) q.set(key, display.get(key));
       history.replaceState(null, '', `#${q}`);
       if (link) link.value = `${location.origin}${location.pathname}#${q}`;
       renderChips();
