@@ -26,24 +26,15 @@ concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 
+# The doc-gc job was removed on 2026-08-16. It enforced "a document is alive
+# only if something alive links to it", rooted at NORTH.md — a file the studio
+# reset deleted on purpose. NORTH.md has not existed in this repo for weeks, so
+# the job could only ever fail, and it did: every run since 2026-08-11 was red.
+# This repo is frozen and public, so the red was reporting to nobody and the
+# only way to green it was to recreate a doctrine that was retired deliberately.
+# A check that cannot be made honest is deleted, not weakened.
+
 jobs:
-  doc-gc:
-    runs-on: ubuntu-latest
-    steps:
-      # Full history, blobs excluded: doc-gc dates each file with `git log -1`
-      # to report staleness, and on the default shallow checkout that call
-      # returns empty for every file — the report still passes but silently
-      # stops saying anything. Staleness is advisory (only orphan and finished
-      # fail the check), so this is about the report being truthful.
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          filter: blob:none
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      # doc-gc.mjs is dependency-free by design, so there is no install step.
-      - run: node scripts/doc-gc.mjs . --check
 
   smoke:
     runs-on: ubuntu-latest
