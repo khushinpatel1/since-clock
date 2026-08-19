@@ -197,7 +197,6 @@ Run the local checks:
 ```sh
 node scripts/smoke-test.mjs
 node scripts/time-test.mjs
-node scripts/doc-gc.mjs . --check
 ```
 
 The deterministic time tests cover past and future inputs, a daylight-saving
